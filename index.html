@@ -3,23 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>P&L Bet Tracker (Decimal Odds)</title>
+  <title>Pro Bet Tracker — P&L, Bankroll, Calendar, Filters, Reports, CLV (Decimal)</title>
 
-  <!-- Chart.js for the P&L chart -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
     :root{
       --bg:#0b0f14;
-      --card:#111824;
       --text:#e6eef9;
       --muted:#93a4bd;
-      --line:#1f2b3d;
       --green:#15c67a;
       --red:#ff4d4d;
       --amber:#f7c948;
       --shadow: 0 10px 30px rgba(0,0,0,.35);
-      --radius: 16px;
+      --radius:16px;
+      --border: rgba(255,255,255,.08);
+      --cardLine: rgba(255,255,255,.06);
+      --panel: rgba(0,0,0,.14);
+      --panel2: rgba(0,0,0,.10);
+      --chip: rgba(255,255,255,.05);
     }
     *{box-sizing:border-box}
     body{
@@ -28,24 +31,21 @@
       background: radial-gradient(1200px 600px at 20% 0%, #15253a 0%, var(--bg) 55%) fixed;
       color:var(--text);
     }
-    .wrap{max-width:1100px;margin:18px auto;padding:0 14px 30px;}
-    .topbar{
-      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
-      margin-bottom:12px;
-    }
+    .wrap{max-width:1280px;margin:18px auto;padding:0 14px 30px;}
+    .topbar{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:12px;}
     .title{display:flex; flex-direction:column; gap:3px;}
-    h1{margin:0;font-size:18px;letter-spacing:.2px}
+    h1{margin:0;font-size:18px}
     .sub{color:var(--muted);font-size:12px}
 
     .tabs{
       display:flex; gap:8px; background:rgba(255,255,255,.04);
-      padding:6px;border:1px solid rgba(255,255,255,.06);
+      padding:6px;border:1px solid var(--cardLine);
       border-radius:999px;
     }
     .tab{
       border:0; cursor:pointer; color:var(--muted);
       background:transparent; padding:7px 12px; border-radius:999px;
-      font-size:12px;
+      font-size:12px; user-select:none;
     }
     .tab.active{background:#0f1b2b;color:var(--text); border:1px solid rgba(255,255,255,.08)}
 
@@ -54,7 +54,7 @@
 
     .card{
       background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
-      border:1px solid rgba(255,255,255,.06);
+      border:1px solid var(--cardLine);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       overflow:hidden;
@@ -62,68 +62,81 @@
     .cardHead{
       padding:12px 14px;
       display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
-      border-bottom:1px solid rgba(255,255,255,.06);
+      border-bottom:1px solid var(--cardLine);
       background: rgba(0,0,0,.12);
     }
-    .cardHead .label{font-size:12px;color:var(--muted)}
-    .metricRow{display:flex; gap:10px; flex-wrap:wrap; padding:12px 14px;}
-    .metric{
-      flex:1; min-width:170px;
-      background: rgba(0,0,0,.16);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:14px;
-      padding:10px 12px;
-    }
-    .metric .k{font-size:11px;color:var(--muted)}
-    .metric .v{font-size:18px;font-weight:700;margin-top:3px}
-    .metric .v.green{color:var(--green)}
-    .metric .v.red{color:var(--red)}
-
-    .chartWrap{padding:12px 14px}
-    canvas{width:100%!important;height:260px!important}
-
+    .label{font-size:12px;color:var(--muted)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
     .pill{
       display:inline-flex; align-items:center; gap:6px;
-      padding:4px 10px;
-      border-radius:999px;
+      padding:4px 10px; border-radius:999px;
       border:1px solid rgba(255,255,255,.10);
       background: rgba(255,255,255,.04);
       font-size:12px;
     }
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
     .small{font-size:11px;color:var(--muted)}
+    .kpiRow{display:flex; gap:10px; flex-wrap:wrap; padding:12px 14px;}
+    .kpi{
+      flex:1; min-width:170px;
+      background: var(--panel);
+      border:1px solid var(--cardLine);
+      border-radius:14px;
+      padding:10px 12px;
+    }
+    .kpi .k{font-size:11px;color:var(--muted)}
+    .kpi .v{font-size:18px;font-weight:900;margin-top:3px}
+    .v.green{color:var(--green)}
+    .v.red{color:var(--red)}
+    .v.amber{color:var(--amber)}
 
-    /* Form */
-    .form{padding:12px 14px}
-    .formGrid{display:grid; grid-template-columns: repeat(12, 1fr); gap:10px;}
-    .field{grid-column: span 3}
-    .field.w4{grid-column: span 4}
-    .field.w6{grid-column: span 6}
-    .field.w12{grid-column: span 12}
-    label{display:block; font-size:11px; color:var(--muted); margin:0 0 4px 2px}
+    .metricGrid{
+      padding:0 14px 14px;
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+    }
+    @media(max-width: 980px){ .metricGrid{grid-template-columns: repeat(2, 1fr)} }
+    @media(max-width: 560px){ .metricGrid{grid-template-columns: 1fr} }
+    .metric{
+      background: var(--panel2);
+      border:1px solid var(--cardLine);
+      border-radius:14px;
+      padding:10px 12px;
+    }
+    .metric .k{font-size:11px;color:var(--muted)}
+    .metric .v{font-size:16px;font-weight:900;margin-top:3px}
 
-    input, select{
-      width:100%; padding:9px 10px; border-radius:12px;
-      border:1px solid rgba(255,255,255,.08);
+    /* Controls */
+    .controls{padding:12px 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;}
+    .control{
+      background: var(--panel);
+      border:1px solid var(--cardLine);
+      border-radius:14px;
+      padding:10px 12px;
+      min-width: 190px;
+      flex:1;
+    }
+    .control .k{font-size:11px;color:var(--muted); margin-bottom:6px;}
+    .control input, .control select{
+      width:100%;
+      padding:9px 10px; border-radius:12px;
+      border:1px solid var(--border);
       background: rgba(0,0,0,.18);
       color:var(--text);
       outline:none;
+      font-size:12px;
     }
-    input::placeholder{color:#7f90aa}
+    .control select{cursor:pointer}
 
-    /* IMPORTANT: make dropdown options visible */
-    select{ color-scheme: dark; }
-    select option{ background:#0f1722; color:#e6eef9; }
-
-    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
     .btn{
-      border:1px solid rgba(255,255,255,.08);
+      border:1px solid var(--border);
       background: rgba(255,255,255,.04);
       color:var(--text);
       padding:8px 10px;
       border-radius:12px;
       cursor:pointer;
       font-size:12px;
+      user-select:none;
     }
     .btn:active{transform: translateY(1px)}
     .btnPrimary{background:#0f1b2b;border-color: rgba(255,255,255,.12);}
@@ -132,25 +145,80 @@
       border-color: rgba(255,77,77,.25);
       color: #ffd2d2;
     }
+    .btnMini{padding:6px 8px; font-size:11px; border-radius:10px}
+    .btnWin{background: rgba(21,198,122,.12); border-color: rgba(21,198,122,.28); color:#d7ffef}
+    .btnLoss{background: rgba(255,77,77,.12); border-color: rgba(255,77,77,.28); color:#ffd2d2}
+    .btnPush{background: rgba(147,164,189,.10); border-color: rgba(147,164,189,.25); color:#d6e0f0}
+
+    /* Seg buttons */
+    .seg{
+      display:flex; gap:8px; flex-wrap:wrap;
+      padding:6px;
+      background: rgba(0,0,0,.16);
+      border:1px solid var(--cardLine);
+      border-radius:14px;
+    }
+    .segBtn{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:12px;
+      min-width: 86px;
+      text-transform: lowercase;
+      user-select:none;
+    }
+    .segBtn.active{background:#0f1b2b;border-color: rgba(255,255,255,.18);}
+    .segBtn.win.active{background: rgba(21,198,122,.14); border-color: rgba(21,198,122,.35);}
+    .segBtn.loss.active{background: rgba(255,77,77,.14); border-color: rgba(255,77,77,.35);}
+    .segBtn.push.active{background: rgba(147,164,189,.10); border-color: rgba(147,164,189,.25);}
+    .segBtn.pending.active{background: rgba(247,201,72,.12); border-color: rgba(247,201,72,.30);}
+
+    /* Chart area */
+    .chartWrap{padding:12px 14px}
+    canvas{width:100%!important;height:280px!important}
+
+    /* Form */
+    .form{padding:12px 14px}
+    .formGrid{display:grid; grid-template-columns: repeat(12, 1fr); gap:10px;}
+    .field{grid-column: span 3}
+    .field.w4{grid-column: span 4}
+    .field.w5{grid-column: span 5}
+    .field.w6{grid-column: span 6}
+    .field.w12{grid-column: span 12}
+    label{display:block; font-size:11px; color:var(--muted); margin:0 0 4px 2px}
+    input{
+      width:100%; padding:9px 10px; border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.18);
+      color:var(--text);
+      outline:none;
+      font-size:12px;
+    }
+    input::placeholder{color:#7f90aa}
+    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
 
     /* Calendar */
     .calWrap{padding:12px 14px}
     .calTop{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
-    .calTitle{font-weight:700}
+    .calTitle{font-weight:900}
     .calNav{display:flex; gap:8px}
-
     .calGrid{display:grid; grid-template-columns: repeat(7, 1fr); gap:8px;}
     .dow{color:var(--muted);font-size:11px;text-align:center;padding:4px 0;}
     .day{
       border-radius: 14px;
-      border:1px solid rgba(255,255,255,.06);
+      border:1px solid var(--cardLine);
       background: rgba(0,0,0,.18);
-      min-height: 72px;
-      padding:8px 8px;
+      min-height: 78px;
+      padding:8px;
       display:flex; flex-direction:column; gap:6px;
       position:relative; overflow:hidden;
+      cursor:pointer;
     }
-    .day.off{opacity:.35; background: rgba(0,0,0,.10);}
+    .day.off{opacity:.35; background: rgba(0,0,0,.10); cursor:default}
+    .day.selected{outline:2px solid rgba(247,201,72,.35)}
     .day::before{
       content:"";
       position:absolute; inset:0;
@@ -159,31 +227,87 @@
       pointer-events:none;
     }
     .dayNum{display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); position:relative;}
-    .pnl{font-weight:800;font-size:13px; position:relative;}
+    .pnl{font-weight:900;font-size:13px; position:relative;}
     .pnl.green{color:var(--green)}
     .pnl.red{color:var(--red)}
     .pnl.zero{color:var(--muted)}
     .mini{font-size:11px;color:var(--muted); position:relative;}
 
-    /* Bets list */
+    /* Day drawer */
+    .drawer{
+      border-top:1px solid var(--cardLine);
+      background: rgba(0,0,0,.10);
+      padding:12px 14px 14px;
+    }
+    .drawerHead{
+      display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .drawerTitle{font-weight:900}
+    .drawerList{display:grid; gap:8px;}
+    .drawerItem{
+      border:1px solid var(--cardLine);
+      border-radius:14px;
+      background: rgba(0,0,0,.12);
+      padding:10px 12px;
+      display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    .drawerItem .left{min-width:240px}
+    .drawerItem .right{display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
+    .badge{
+      padding:4px 10px;border-radius:999px;border:1px solid var(--cardLine);
+      background: rgba(255,255,255,.04); font-size:11px; color:var(--muted);
+    }
+
+    /* Tables */
     .list{padding:0 14px 14px}
     table{width:100%; border-collapse:collapse;}
-    th,td{padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.06); font-size:12px; text-align:left; vertical-align:top}
+    th,td{padding:10px 8px; border-bottom:1px solid var(--cardLine); font-size:12px; text-align:left; vertical-align:top}
     th{color:var(--muted); font-weight:600}
     .right{text-align:right}
 
-    .resPill{
-      display:inline-flex; align-items:center;
-      padding:4px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.04);
-      font-size:12px;
-      margin-bottom:6px;
+    details{
+      border-top:1px solid var(--cardLine);
+      background: rgba(0,0,0,.08);
+      padding:12px 14px 14px;
     }
-    .resPill.win{border-color: rgba(21,198,122,.35); background: rgba(21,198,122,.12); color:#bff2db}
-    .resPill.loss{border-color: rgba(255,77,77,.35); background: rgba(255,77,77,.12); color:#ffd2d2}
-    .resPill.push{border-color: rgba(147,164,189,.25); background: rgba(147,164,189,.10); color:#d6e4ff}
-    .resPill.pending{border-color: rgba(247,201,72,.30); background: rgba(247,201,72,.12); color:#fff0c2}
+    details > summary{
+      cursor:pointer;
+      list-style:none;
+      font-weight:900;
+      user-select:none;
+    }
+    details > summary::-webkit-details-marker{display:none}
+    .section{margin-top:12px; padding:12px; border:1px solid var(--cardLine); border-radius:14px; background: rgba(0,0,0,.10);}
+
+    /* Modal */
+    .modalBackdrop{
+      position:fixed; inset:0; background: rgba(0,0,0,.55);
+      display:none; align-items:center; justify-content:center;
+      padding:16px;
+      z-index: 50;
+    }
+    .modal{
+      width:min(760px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid var(--cardLine);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .modalHead{padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px; border-bottom:1px solid var(--cardLine); background: rgba(0,0,0,.18);}
+    .modalBody{padding:12px 14px}
+    .modalFoot{padding:12px 14px; border-top:1px solid var(--cardLine); display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;}
+    .xBtn{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:18px; line-height:1}
+    .chipRow{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .chip{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--cardLine);
+      background: var(--chip);
+      font-size:11px;
+      color: var(--muted);
+    }
   </style>
 </head>
 
@@ -191,10 +315,10 @@
   <div class="wrap">
     <div class="topbar">
       <div class="title">
-        <h1>P&L Tracker (Decimal Odds)</h1>
-        <div class="sub">Calendar heatmap + cumulative P&L chart. Saved in your browser.</div>
+        <h1>Pro Bet Tracker (Decimal Odds)</h1>
+        <div class="sub">All-in-one: filters + edit + chart toggle + 0 baseline + green/red bars + one-click settle + calendar day drilldown + CSV import/export + CLV + streaks + best/worst day.</div>
       </div>
-      <div class="tabs" role="tablist" aria-label="Range">
+      <div class="tabs" role="tablist">
         <button class="tab active" data-range="daily">Daily</button>
         <button class="tab" data-range="monthly">Monthly</button>
         <button class="tab" data-range="all">All Time</button>
@@ -206,69 +330,231 @@
       <div class="card">
         <div class="cardHead">
           <div>
-            <div class="label">P&L Chart</div>
+            <div class="label">Charts</div>
             <div class="small" id="chartSub"></div>
           </div>
           <div class="pill mono" id="lastUpdated">—</div>
         </div>
 
-        <div class="metricRow">
-          <div class="metric">
-            <div class="k">Total P&L (settled)</div>
-            <div class="v" id="mTotal">0.00</div>
+        <!-- KPI strip -->
+        <div class="kpiRow">
+          <div class="kpi">
+            <div class="k">Profit (settled)</div>
+            <div class="v" id="kProfit">0.00</div>
           </div>
-          <div class="metric">
-            <div class="k">ROI (settled)</div>
-            <div class="v" id="mROI">0.00%</div>
+          <div class="kpi">
+            <div class="k">ROI % (settled)</div>
+            <div class="v" id="kROI">0.00%</div>
           </div>
-          <div class="metric">
-            <div class="k">W–L–P</div>
-            <div class="v" id="mWLP">0–0–0</div>
+          <div class="kpi">
+            <div class="k">Win Rate % (W/L)</div>
+            <div class="v" id="kWR">0.00%</div>
           </div>
+          <div class="kpi">
+            <div class="k">Max Drawdown</div>
+            <div class="v" id="kDD">0.00</div>
+          </div>
+          <div class="kpi">
+            <div class="k">Current Bankroll</div>
+            <div class="v" id="kBR">0.00</div>
+          </div>
+        </div>
+
+        <!-- Filters + chart toggles -->
+        <div class="cardHead">
+          <div>
+            <div class="label">Filters + Chart Mode</div>
+            <div class="small">Filters affect chart, stats, reports, and list.</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="control">
+            <div class="k">Chart Mode</div>
+            <select id="chartMode">
+              <option value="pnl">Cumulative P&L</option>
+              <option value="bankroll">Bankroll curve</option>
+              <option value="dailybars">Daily P&L bars</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <div class="k">Sport</div>
+            <select id="fltSport">
+              <option value="">All</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <div class="k">Market</div>
+            <select id="fltMarket">
+              <option value="">All</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <div class="k">Result</div>
+            <select id="fltResult">
+              <option value="">All</option>
+              <option value="settled">Settled</option>
+              <option value="pending">Pending</option>
+              <option value="win">Win</option>
+              <option value="loss">Loss</option>
+              <option value="push">Push</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <div class="k">From</div>
+            <input id="fltFrom" type="date" />
+          </div>
+
+          <div class="control">
+            <div class="k">To</div>
+            <input id="fltTo" type="date" />
+          </div>
+
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button class="btn" id="btnClearFilters">Clear filters</button>
+          </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metricGrid">
+          <div class="metric"><div class="k">Total Bets</div><div class="v mono" id="sTotalBets">0</div></div>
+          <div class="metric"><div class="k">Settled Bets</div><div class="v mono" id="sSettledBets">0</div></div>
+          <div class="metric"><div class="k">Total Staked (settled)</div><div class="v mono" id="sStaked">0.00</div></div>
+
+          <div class="metric"><div class="k">Wins</div><div class="v mono" id="sWins">0</div></div>
+          <div class="metric"><div class="k">Losses</div><div class="v mono" id="sLosses">0</div></div>
+          <div class="metric"><div class="k">Pushes</div><div class="v mono" id="sPushes">0</div></div>
+
+          <div class="metric"><div class="k">Avg Odds (settled)</div><div class="v mono" id="sAvgOdds">0.00</div></div>
+          <div class="metric"><div class="k">Avg Stake (settled)</div><div class="v mono" id="sAvgStake">0.00</div></div>
+          <div class="metric"><div class="k">Volatility (daily std)</div><div class="v mono" id="sVolDaily">0.00</div></div>
+
+          <!-- Added from the “better” version -->
+          <div class="metric"><div class="k">Longest Win Streak</div><div class="v mono" id="sWinStreak">0</div></div>
+          <div class="metric"><div class="k">Longest Losing Streak</div><div class="v mono" id="sLoseStreak">0</div></div>
+          <div class="metric"><div class="k">Best Day (P&L)</div><div class="v mono" id="sBestDay">—</div></div>
+          <div class="metric"><div class="k">Worst Day (P&L)</div><div class="v mono" id="sWorstDay">—</div></div>
         </div>
 
         <div class="chartWrap">
-          <canvas id="pnlChart"></canvas>
+          <canvas id="mainChart"></canvas>
         </div>
 
+        <!-- Settings -->
+        <details open>
+          <summary>Bankroll + Units Settings</summary>
+          <div class="section">
+            <div class="small">Current Bankroll = Starting Bankroll + Total Profit (settled).</div>
+            <div class="formGrid" style="margin-top:10px;">
+              <div class="field w4">
+                <label>Starting Bankroll</label>
+                <input id="setStartBR" type="number" step="0.01" min="0" placeholder="1000" />
+              </div>
+              <div class="field w4">
+                <label>Unit Mode</label>
+                <div class="seg" id="unitModeSeg">
+                  <button type="button" class="segBtn active" data-val="fixed">fixed $</button>
+                  <button type="button" class="segBtn" data-val="percent">% bankroll</button>
+                </div>
+                <div class="small" id="unitHint" style="margin-top:6px;"></div>
+              </div>
+              <div class="field w4">
+                <label>1 Unit ($) — if fixed</label>
+                <input id="setUnitValue" type="number" step="0.01" min="0.01" placeholder="10" />
+              </div>
+              <div class="field w4">
+                <label>Unit % — if % mode</label>
+                <input id="setUnitPct" type="number" step="0.01" min="0" placeholder="1" />
+              </div>
+              <div class="field w12">
+                <button class="btn btnPrimary" id="btnSaveSettings">Save settings</button>
+              </div>
+            </div>
+
+            <div class="metricGrid" style="padding:12px 0 0;">
+              <div class="metric"><div class="k">Current Bankroll</div><div class="v mono" id="bkCurrent">0.00</div></div>
+              <div class="metric"><div class="k">Peak Bankroll</div><div class="v mono" id="bkPeak">0.00</div></div>
+              <div class="metric"><div class="k">% Growth</div><div class="v mono" id="bkGrowth">0.00%</div></div>
+              <div class="metric"><div class="k">Units Staked (settled)</div><div class="v mono" id="uStaked">0.00</div></div>
+              <div class="metric"><div class="k">Units Profit (settled)</div><div class="v mono" id="uProfit">0.00</div></div>
+              <div class="metric"><div class="k">ROI (Units)</div><div class="v mono" id="uROI">0.00u%</div></div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Add bet -->
         <div class="cardHead">
           <div>
             <div class="label">Add Bet</div>
-            <div class="small">win=(odds−1)×stake, loss=−stake, push/pending=0</div>
+            <div class="small">Profit: win = stake×(odds−1), loss = −stake, push/pending = 0. Closing odds optional (for CLV).</div>
           </div>
         </div>
 
         <div class="form">
+          <datalist id="sportList">
+            <option value="NBA"></option><option value="NFL"></option><option value="NHL"></option><option value="MLB"></option>
+            <option value="Soccer"></option><option value="UFC"></option><option value="Tennis"></option><option value="Other"></option>
+          </datalist>
+          <datalist id="marketList">
+            <option value="ML"></option><option value="Spread"></option><option value="Totals"></option><option value="Props"></option><option value="Futures"></option><option value="Other"></option>
+          </datalist>
+
           <div class="formGrid">
             <div class="field">
               <label>Date</label>
               <input id="fDate" type="date" />
             </div>
-            <div class="field w4">
-              <label>Event</label>
-              <input id="fEvent" placeholder="Portland vs Wolves" />
+            <div class="field w5">
+              <label>Event / Market</label>
+              <input id="fEvent" placeholder="Portland vs Wolves • Player props" />
             </div>
             <div class="field w4">
               <label>Pick</label>
               <input id="fPick" placeholder="Ant 20+ points" />
             </div>
+
             <div class="field">
-              <label>Odds (decimal)</label>
+              <label>Sport</label>
+              <input id="fSport" list="sportList" placeholder="NBA" />
+            </div>
+            <div class="field">
+              <label>Market Type</label>
+              <input id="fMarket" list="marketList" placeholder="Props" />
+            </div>
+
+            <div class="field">
+              <label>Odds</label>
               <input id="fOdds" type="number" step="0.01" min="1.01" placeholder="1.91" />
+            </div>
+            <div class="field">
+              <label>Closing Odds (optional)</label>
+              <input id="fCloseOdds" type="number" step="0.01" min="1.01" placeholder="1.87" />
             </div>
             <div class="field">
               <label>Stake</label>
               <input id="fStake" type="number" step="0.01" min="0.01" placeholder="100" />
             </div>
-            <div class="field w4">
+
+            <div class="field w6">
               <label>Result</label>
-              <select id="fResult">
-                <option value="pending">pending</option>
-                <option value="win">win</option>
-                <option value="loss">loss</option>
-                <option value="push">push</option>
-              </select>
+              <div class="seg" id="resultSeg">
+                <button type="button" class="segBtn pending active" data-val="pending">pending</button>
+                <button type="button" class="segBtn win" data-val="win">win</button>
+                <button type="button" class="segBtn loss" data-val="loss">loss</button>
+                <button type="button" class="segBtn push" data-val="push">push</button>
+              </div>
+              <div class="small" style="margin-top:6px;">Current: <span class="mono" id="resultVal">pending</span></div>
             </div>
+
+            <div class="field w12">
+              <label>Tags (optional, comma-separated)</label>
+              <input id="fTags" placeholder="value, live, parlay" />
+            </div>
+
             <div class="field w12">
               <label>Notes (optional)</label>
               <input id="fNotes" placeholder="Optional" />
@@ -277,14 +563,77 @@
 
           <div class="actions">
             <button class="btn btnPrimary" id="btnAdd">Add bet</button>
-            <button class="btn" id="btnExport">Export JSON</button>
+            <button class="btn" id="btnExportJSON">Export JSON</button>
+            <button class="btn" id="btnExportCSV">Export CSV</button>
             <label class="btn" style="cursor:pointer">
               Import JSON
               <input id="fileImport" type="file" accept="application/json" style="display:none" />
             </label>
+            <label class="btn" style="cursor:pointer">
+              Import CSV
+              <input id="fileImportCSV" type="file" accept=".csv,text/csv" style="display:none" />
+            </label>
             <button class="btn btnDanger" id="btnWipe">Wipe all</button>
           </div>
         </div>
+
+        <!-- Pro analytics -->
+        <details>
+          <summary>Pro Analytics (Reports, Breakdowns, CLV)</summary>
+
+          <div class="section">
+            <div class="label">CLV</div>
+            <div class="small">CLV% = (yourOdds/closingOdds − 1) × 100 (only if closing odds is set).</div>
+            <div class="metricGrid" style="padding:10px 0 0;">
+              <div class="metric"><div class="k">Bets with Closing Odds</div><div class="v mono" id="clvCount">0</div></div>
+              <div class="metric"><div class="k">Avg CLV %</div><div class="v mono" id="clvAvg">0.00%</div></div>
+              <div class="metric"><div class="k">Positive CLV Rate</div><div class="v mono" id="clvPosRate">0.00%</div></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="label">Weekly (last 12 weeks)</div>
+            <div class="list" style="padding:0;">
+              <table>
+                <thead>
+                  <tr><th>Week (Mon)</th><th class="right">Bets</th><th class="right">Staked</th><th class="right">Profit</th><th class="right">ROI</th></tr>
+                </thead>
+                <tbody id="tblWeekly"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="label">Monthly (all months)</div>
+            <div class="pill mono" id="bestWorstMonth">Best/Worst: —</div>
+            <div class="list" style="padding:10px 0 0;">
+              <table>
+                <thead>
+                  <tr><th>Month</th><th class="right">Bets</th><th class="right">Staked</th><th class="right">Profit</th><th class="right">ROI</th></tr>
+                </thead>
+                <tbody id="tblMonthly"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="label">Breakdowns</div>
+            <div class="small">By Sport, Market, Odds range, Stake size (units).</div>
+
+            <div class="list" style="padding:10px 0 0;">
+              <div class="chipRow">
+                <span class="chip">Sport</span><span class="chip">Market</span><span class="chip">Odds bucket</span><span class="chip">Stake bucket (units)</span>
+              </div>
+
+              <table style="margin-top:10px;">
+                <thead>
+                  <tr><th>Group</th><th class="right">Bets</th><th class="right">Profit</th><th class="right">ROI</th></tr>
+                </thead>
+                <tbody id="tblBreakdowns"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
       </div>
 
       <!-- RIGHT -->
@@ -292,9 +641,15 @@
         <div class="cardHead">
           <div>
             <div class="label">P&L Calendar</div>
-            <div class="small">Green = profit day, Red = loss day</div>
+            <div class="small">Calendar always shows all bets (not filtered). Click a day to drill down.</div>
           </div>
           <div class="pill mono" id="monthPnl">Month P&L: 0.00</div>
+        </div>
+
+        <div class="metricGrid" style="padding-top:12px;">
+          <div class="metric"><div class="k">Best Day (this month)</div><div class="v mono" id="mBestDayMonth">—</div></div>
+          <div class="metric"><div class="k">Worst Day (this month)</div><div class="v mono" id="mWorstDayMonth">—</div></div>
+          <div class="metric"><div class="k">Monthly Total</div><div class="v mono" id="mMonthTotal">0.00</div></div>
         </div>
 
         <div class="calWrap">
@@ -306,27 +661,38 @@
               <button class="btn" id="btnNext">▶</button>
             </div>
           </div>
-
           <div class="calGrid" id="dowRow"></div>
           <div class="calGrid" id="calGrid"></div>
         </div>
 
+        <!-- Day Drilldown -->
+        <div class="drawer" id="dayDrawer" style="display:none;">
+          <div class="drawerHead">
+            <div>
+              <div class="drawerTitle" id="drawerTitle">—</div>
+              <div class="small" id="drawerSub">—</div>
+            </div>
+            <button class="btn" id="btnCloseDrawer">Close</button>
+          </div>
+          <div class="drawerList" id="drawerList"></div>
+        </div>
+
         <div class="cardHead">
           <div>
-            <div class="label">Recent Bets</div>
-            <div class="small">Change result to update P&L immediately</div>
+            <div class="label">Bets</div>
+            <div class="small">List is filtered. One-click settle: Win/Loss/Push buttons.</div>
           </div>
         </div>
 
-        <div class="list" style="overflow:auto; max-height: 420px;">
+        <div class="list" style="overflow:auto; max-height: 650px;">
           <table>
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Event / Pick</th>
+                <th>Info</th>
                 <th class="right">Odds</th>
                 <th class="right">Stake</th>
-                <th>Result</th>
+                <th>Settle</th>
                 <th class="right">P&L</th>
                 <th></th>
               </tr>
@@ -338,9 +704,86 @@
     </div>
   </div>
 
+  <!-- Edit Modal -->
+  <div class="modalBackdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHead">
+        <div>
+          <div style="font-weight:900;">Edit Bet</div>
+          <div class="small" id="modalSub">—</div>
+        </div>
+        <button class="xBtn" id="btnCloseModal" aria-label="Close">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="formGrid">
+          <div class="field">
+            <label>Date</label>
+            <input id="eDate" type="date" />
+          </div>
+          <div class="field w5">
+            <label>Event / Market</label>
+            <input id="eEvent" />
+          </div>
+          <div class="field w4">
+            <label>Pick</label>
+            <input id="ePick" />
+          </div>
+
+          <div class="field">
+            <label>Sport</label>
+            <input id="eSport" list="sportList" />
+          </div>
+          <div class="field">
+            <label>Market Type</label>
+            <input id="eMarket" list="marketList" />
+          </div>
+
+          <div class="field">
+            <label>Odds</label>
+            <input id="eOdds" type="number" step="0.01" min="1.01" />
+          </div>
+          <div class="field">
+            <label>Closing Odds</label>
+            <input id="eCloseOdds" type="number" step="0.01" min="1.01" />
+          </div>
+          <div class="field">
+            <label>Stake</label>
+            <input id="eStake" type="number" step="0.01" min="0.01" />
+          </div>
+
+          <div class="field w6">
+            <label>Result</label>
+            <div class="seg" id="editResultSeg">
+              <button type="button" class="segBtn pending" data-val="pending">pending</button>
+              <button type="button" class="segBtn win" data-val="win">win</button>
+              <button type="button" class="segBtn loss" data-val="loss">loss</button>
+              <button type="button" class="segBtn push" data-val="push">push</button>
+            </div>
+            <div class="small" style="margin-top:6px;">Current: <span class="mono" id="eResultVal">pending</span></div>
+          </div>
+
+          <div class="field w12">
+            <label>Tags (comma-separated)</label>
+            <input id="eTags" />
+          </div>
+
+          <div class="field w12">
+            <label>Notes</label>
+            <input id="eNotes" />
+          </div>
+        </div>
+      </div>
+      <div class="modalFoot">
+        <button class="btn" id="btnCancelEdit">Cancel</button>
+        <button class="btn btnPrimary" id="btnSaveEdit">Save</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 (() => {
-  const STORAGE_KEY = "pnl_tracker_decimal_v3";
+  const STORAGE_KEY = "pro_bet_tracker_decimal_v4"; // bumped due to fixes/improvements
+
   const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   const $ = (id) => document.getElementById(id);
 
@@ -348,21 +791,68 @@
     tabs: Array.from(document.querySelectorAll(".tab")),
     chartSub: $("chartSub"),
     lastUpdated: $("lastUpdated"),
-    mTotal: $("mTotal"),
-    mROI: $("mROI"),
-    mWLP: $("mWLP"),
+
+    kProfit: $("kProfit"),
+    kROI: $("kROI"),
+    kWR: $("kWR"),
+    kDD: $("kDD"),
+    kBR: $("kBR"),
+
+    chartMode: $("chartMode"),
+    fltSport: $("fltSport"),
+    fltMarket: $("fltMarket"),
+    fltResult: $("fltResult"),
+    fltFrom: $("fltFrom"),
+    fltTo: $("fltTo"),
+    btnClearFilters: $("btnClearFilters"),
+
+    sTotalBets: $("sTotalBets"),
+    sSettledBets: $("sSettledBets"),
+    sStaked: $("sStaked"),
+    sWins: $("sWins"),
+    sLosses: $("sLosses"),
+    sPushes: $("sPushes"),
+    sAvgOdds: $("sAvgOdds"),
+    sAvgStake: $("sAvgStake"),
+    sVolDaily: $("sVolDaily"),
+
+    // added
+    sWinStreak: $("sWinStreak"),
+    sLoseStreak: $("sLoseStreak"),
+    sBestDay: $("sBestDay"),
+    sWorstDay: $("sWorstDay"),
+
+    setStartBR: $("setStartBR"),
+    unitModeSeg: $("unitModeSeg"),
+    unitHint: $("unitHint"),
+    setUnitValue: $("setUnitValue"),
+    setUnitPct: $("setUnitPct"),
+    btnSaveSettings: $("btnSaveSettings"),
+
+    bkCurrent: $("bkCurrent"),
+    bkPeak: $("bkPeak"),
+    bkGrowth: $("bkGrowth"),
+    uStaked: $("uStaked"),
+    uProfit: $("uProfit"),
+    uROI: $("uROI"),
 
     fDate: $("fDate"),
     fEvent: $("fEvent"),
     fPick: $("fPick"),
+    fSport: $("fSport"),
+    fMarket: $("fMarket"),
     fOdds: $("fOdds"),
+    fCloseOdds: $("fCloseOdds"),
     fStake: $("fStake"),
-    fResult: $("fResult"),
+    fTags: $("fTags"),
     fNotes: $("fNotes"),
-
+    resultSeg: $("resultSeg"),
+    resultVal: $("resultVal"),
     btnAdd: $("btnAdd"),
-    btnExport: $("btnExport"),
+    btnExportJSON: $("btnExportJSON"),
+    btnExportCSV: $("btnExportCSV"),
     fileImport: $("fileImport"),
+    fileImportCSV: $("fileImportCSV"),
     btnWipe: $("btnWipe"),
 
     calTitle: $("calTitle"),
@@ -372,42 +862,129 @@
     btnNext: $("btnNext"),
     btnToday: $("btnToday"),
     monthPnl: $("monthPnl"),
+    mBestDayMonth: $("mBestDayMonth"),
+    mWorstDayMonth: $("mWorstDayMonth"),
+    mMonthTotal: $("mMonthTotal"),
 
+    dayDrawer: $("dayDrawer"),
+    drawerTitle: $("drawerTitle"),
+    drawerSub: $("drawerSub"),
+    drawerList: $("drawerList"),
+    btnCloseDrawer: $("btnCloseDrawer"),
+
+    clvCount: $("clvCount"),
+    clvAvg: $("clvAvg"),
+    clvPosRate: $("clvPosRate"),
+    tblWeekly: $("tblWeekly"),
+    tblMonthly: $("tblMonthly"),
+    bestWorstMonth: $("bestWorstMonth"),
+    tblBreakdowns: $("tblBreakdowns"),
+
+    mainChart: $("mainChart"),
     betsTbody: $("betsTbody"),
-    chartCanvas: $("pnlChart"),
+
+    modalBackdrop: $("modalBackdrop"),
+    btnCloseModal: $("btnCloseModal"),
+    btnCancelEdit: $("btnCancelEdit"),
+    btnSaveEdit: $("btnSaveEdit"),
+    modalSub: $("modalSub"),
+
+    eDate: $("eDate"),
+    eEvent: $("eEvent"),
+    ePick: $("ePick"),
+    eSport: $("eSport"),
+    eMarket: $("eMarket"),
+    eOdds: $("eOdds"),
+    eCloseOdds: $("eCloseOdds"),
+    eStake: $("eStake"),
+    editResultSeg: $("editResultSeg"),
+    eResultVal: $("eResultVal"),
+    eTags: $("eTags"),
+    eNotes: $("eNotes"),
   };
 
-  let state = { nextId: 1, bets: [], range: "daily" };
+  let state = {
+    nextId: 1,
+    bets: [],
+    range: "daily",
+    chartMode: "pnl",
+    filters: { sport:"", market:"", result:"", from:"", to:"" },
+    settings: { startingBankroll: 0, unitMode: "fixed", unitValue: 10, unitPct: 1 },
+    ui: { selectedDay: "" }
+  };
+
   let calYear, calMonth;
   let chart;
+  let formResult = "pending";
+  let editResult = "pending";
+  let editingId = null;
 
+  // ---------- helpers ----------
   function todayISO(){
     const d = new Date();
     const off = d.getTimezoneOffset();
-    const local = new Date(d.getTime() - off * 60 * 1000);
+    const local = new Date(d.getTime() - off * 60000);
     return local.toISOString().slice(0,10);
   }
   function round2(x){ return Math.round((x + Number.EPSILON) * 100) / 100; }
   function fmtMoney(x){ return round2(Number(x) || 0).toFixed(2); }
+  function fmtPct(x){ return round2(Number(x) || 0).toFixed(2) + "%"; }
   function toDate(dateStr){
-    const [y,m,d] = dateStr.split("-").map(Number);
+    const [y,m,d] = String(dateStr).split("-").map(Number);
     return new Date(y, m-1, d);
   }
+  function safeNum(x){
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  }
+  function escapeHTML(s){
+    return String(s ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+  function stdDev(arr){
+    const xs = arr.filter(x => Number.isFinite(x));
+    if(xs.length <= 1) return 0;
+    const mean = xs.reduce((a,b)=>a+b,0) / xs.length;
+    const varr = xs.reduce((s,x)=>s + (x-mean)*(x-mean), 0) / (xs.length - 1);
+    return Math.sqrt(varr);
+  }
 
+  // ---------- persistence ----------
   function load(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return;
-      const parsed = JSON.parse(raw);
-      state.nextId = Number(parsed.nextId) || 1;
-      state.bets = Array.isArray(parsed.bets) ? parsed.bets : [];
-      state.range = parsed.range || "daily";
+      const p = JSON.parse(raw);
+
+      state.nextId = Number(p.nextId) || 1;
+      state.bets = Array.isArray(p.bets) ? p.bets : [];
+      state.range = p.range || "daily";
+      state.chartMode = p.chartMode || "pnl";
+
+      state.filters = {
+        sport: String(p.filters?.sport ?? ""),
+        market: String(p.filters?.market ?? ""),
+        result: String(p.filters?.result ?? ""),
+        from: String(p.filters?.from ?? ""),
+        to: String(p.filters?.to ?? "")
+      };
+
+      state.settings = {
+        startingBankroll: safeNum(p.settings?.startingBankroll) ?? 0,
+        unitMode: (p.settings?.unitMode === "percent") ? "percent" : "fixed",
+        unitValue: safeNum(p.settings?.unitValue) ?? 10,
+        unitPct: safeNum(p.settings?.unitPct) ?? 1
+      };
+
+      state.ui = { selectedDay: String(p.ui?.selectedDay ?? "") };
     }catch(e){
       console.warn("load failed", e);
     }
   }
   function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
+  // ---------- math ----------
   function isSettled(b){
     const r = (b.result || "").toLowerCase();
     return r === "win" || r === "loss" || r === "push";
@@ -416,253 +993,377 @@
     const r = (b.result || "pending").toLowerCase();
     const odds = Number(b.odds), stake = Number(b.stake);
     if(!Number.isFinite(odds) || !Number.isFinite(stake)) return 0;
-    if(r === "win") return round2((odds - 1) * stake);
+    if(r === "win") return round2(stake * (odds - 1));
     if(r === "loss") return round2(-stake);
-    return 0;
+    return 0; // push/pending
+  }
+  function clvPct(b){
+    const o = safeNum(b.odds);
+    const c = safeNum(b.closingOdds);
+    if(!o || !c || o <= 0 || c <= 0) return null;
+    return round2(((o / c) - 1) * 100);
   }
 
-  function clearForm(){
-    els.fDate.value = todayISO();
-    els.fEvent.value = "";
-    els.fPick.value = "";
-    els.fOdds.value = "";
-    els.fStake.value = "";
-    els.fResult.value = "pending";
-    els.fNotes.value = "";
+  function getUnitSize(){
+    const s = state.settings;
+    const startBR = Number(s.startingBankroll) || 0;
+    if(s.unitMode === "percent"){
+      const pct = Number(s.unitPct) || 0;
+      const u = startBR * (pct/100);
+      return u > 0 ? u : 0;
+    }
+    const u = Number(s.unitValue) || 0;
+    return u > 0 ? u : 0;
   }
 
-  function addBet(){
-    const date = els.fDate.value || todayISO();
-    const event = (els.fEvent.value || "").trim();
-    const pick  = (els.fPick.value || "").trim();
-    const odds  = Number(els.fOdds.value);
-    const stake = Number(els.fStake.value);
-    const result = els.fResult.value;
-    const notes = (els.fNotes.value || "").trim();
-
-    if(!event) return alert("Event is required.");
-    if(!pick) return alert("Pick is required.");
-    if(!Number.isFinite(odds) || odds <= 1.0) return alert("Decimal odds must be > 1.00 (example: 1.91).");
-    if(!Number.isFinite(stake) || stake <= 0) return alert("Stake must be > 0.");
-
-    state.bets.unshift({
-      id: state.nextId++,
-      date, event, pick, odds, stake, result, notes,
-      createdAt: new Date().toISOString(),
-    });
-
-    save();
-    renderAll();
-    clearForm();
-  }
-
-  function exportJSON(){
-    const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "pnl-tracker-export.json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function importJSON(file){
-    const reader = new FileReader();
-    reader.onload = () => {
-      try{
-        const parsed = JSON.parse(String(reader.result));
-        const bets = Array.isArray(parsed.bets) ? parsed.bets : [];
-        const nextId = Number(parsed.nextId) || 1;
-
-        state = {
-          nextId,
-          range: parsed.range || state.range || "daily",
-          bets: bets.map(b => ({
-            id: Number(b.id),
-            date: String(b.date || todayISO()).slice(0,10),
-            event: String(b.event || ""),
-            pick: String(b.pick || ""),
-            odds: Number(b.odds),
-            stake: Number(b.stake),
-            result: String(b.result || "pending").toLowerCase(),
-            notes: String(b.notes || ""),
-            createdAt: String(b.createdAt || new Date().toISOString())
-          })).filter(b => Number.isFinite(b.id) && b.id > 0),
-        };
-
-        const maxId = state.bets.reduce((m,b)=>Math.max(m,b.id),0);
-        if(!Number.isFinite(state.nextId) || state.nextId <= maxId) state.nextId = maxId + 1;
-
-        save();
-        renderAll();
-      }catch(e){
-        alert("Import failed: " + e.message);
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  function wipeAll(){
-    if(!confirm("Wipe all bets? This cannot be undone.")) return;
-    state = { nextId: 1, bets: [], range: state.range };
-    save();
-    renderAll();
-  }
-
+  // ---------- range ----------
   function inRange(dateStr, range){
     const dt = toDate(dateStr);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     if(range === "all") return true;
-
     if(range === "daily"){
       const start = new Date(today); start.setDate(start.getDate() - 29);
       return dt >= start && dt <= today;
     }
-
     if(range === "monthly"){
       return dt.getFullYear() === today.getFullYear() && dt.getMonth() === today.getMonth();
     }
-
     return true;
   }
 
-  function dailyPnlMap(range){
-    const map = new Map();
-    for(const b of state.bets){
-      if(!inRange(b.date, range)) continue;
+  // ---------- filtering ----------
+  function passFilters(b){
+    const f = state.filters;
+
+    if(f.sport){
+      const s = String(b.sport || "").trim();
+      if(s !== f.sport) return false;
+    }
+    if(f.market){
+      const m = String(b.marketType || "").trim();
+      if(m !== f.market) return false;
+    }
+    if(f.result){
+      const r = String(b.result || "pending").toLowerCase();
+      if(f.result === "settled"){
+        if(!isSettled(b)) return false;
+      } else {
+        if(r !== f.result) return false;
+      }
+    }
+    if(f.from){
+      if(String(b.date) < f.from) return false;
+    }
+    if(f.to){
+      if(String(b.date) > f.to) return false;
+    }
+    return true;
+  }
+
+  function getFilteredBets(){
+    return state.bets
+      .filter(b => inRange(b.date, state.range))
+      .filter(passFilters);
+  }
+
+  // Improved daily map: keep both all-count and settled-count
+  function dailyPnlMapFrom(bets){
+    const map = new Map(); // date -> {pnl, countAll, countSettled}
+    for(const b of bets){
       const key = b.date;
-      if(!map.has(key)) map.set(key, { pnl:0, count:0, stakeSettled:0 });
+      if(!map.has(key)) map.set(key, { pnl:0, countAll:0, countSettled:0 });
       const cell = map.get(key);
+      cell.countAll += 1;
       if(isSettled(b)){
         cell.pnl += profitFor(b);
-        cell.stakeSettled += Number(b.stake) || 0;
+        cell.countSettled += 1;
       }
-      cell.count += 1;
     }
-    for(const [k,v] of map.entries()){
-      v.pnl = round2(v.pnl);
-      v.stakeSettled = round2(v.stakeSettled);
-    }
+    for(const v of map.values()) v.pnl = round2(v.pnl);
     return map;
   }
 
-  function getSummary(){
-    const settled = state.bets.filter(isSettled);
-    let staked=0, pnl=0, w=0,l=0,p=0;
+  // ---------- compute stats ----------
+  function computeStats(bets){
+    const totalBets = bets.length;
+    const settled = bets.filter(isSettled);
+    const settledBets = settled.length;
+
+    let wins=0, losses=0, pushes=0;
+    let totalStaked=0;
+    let totalProfit=0;
+    let sumOdds=0, sumStake=0;
+
+    const daily = dailyPnlMapFrom(bets);
+    const dates = Array.from(daily.keys()).sort();
+
+    // drawdown based on daily cumulative pnl in this view
+    let cum=0, peak=0, maxDD=0, maxCum=0;
+
+    // best/worst day in this view
+    let bestDay = null; // {date,pnl}
+    let worstDay = null;
+
     for(const b of settled){
-      staked += Number(b.stake) || 0;
-      const pr = profitFor(b);
-      pnl += pr;
-      if(b.result === "win") w++;
-      else if(b.result === "loss") l++;
-      else if(b.result === "push") p++;
+      totalStaked += Number(b.stake)||0;
+      const p = profitFor(b);
+      totalProfit += p;
+      sumOdds += Number(b.odds)||0;
+      sumStake += Number(b.stake)||0;
+
+      if(b.result === "win") wins++;
+      else if(b.result === "loss") losses++;
+      else if(b.result === "push") pushes++;
     }
-    staked = round2(staked);
-    pnl = round2(pnl);
-    const roi = staked > 0 ? round2((pnl/staked)*100) : 0;
-    return {staked,pnl,roi,w,l,p};
+
+    for(const d of dates){
+      const dp = daily.get(d)?.pnl || 0;
+
+      if(bestDay === null || dp > bestDay.pnl) bestDay = {date:d, pnl:dp};
+      if(worstDay === null || dp < worstDay.pnl) worstDay = {date:d, pnl:dp};
+
+      cum = round2(cum + dp);
+      if(cum > peak) peak = cum;
+      const dd = round2(peak - cum);
+      if(dd > maxDD) maxDD = dd;
+      if(cum > maxCum) maxCum = cum;
+    }
+
+    totalStaked = round2(totalStaked);
+    totalProfit = round2(totalProfit);
+
+    const roi = totalStaked > 0 ? round2((totalProfit / totalStaked) * 100) : 0;
+    const winRate = (wins + losses) > 0 ? round2((wins / (wins + losses)) * 100) : 0;
+
+    const avgOdds = settledBets ? round2(sumOdds / settledBets) : 0;
+    const avgStake = settledBets ? round2(sumStake / settledBets) : 0;
+
+    const startBR = Number(state.settings.startingBankroll) || 0;
+    const currentBR = round2(startBR + totalProfit);
+    const peakBR = round2(startBR + maxCum);
+    const growthPct = startBR > 0 ? round2((totalProfit / startBR) * 100) : 0;
+
+    const unitSize = getUnitSize();
+    const unitsStaked = unitSize > 0 ? round2(totalStaked / unitSize) : 0;
+    const unitsProfit = unitSize > 0 ? round2(totalProfit / unitSize) : 0;
+    const roiUnits = (unitSize > 0 && unitsStaked > 0) ? round2((unitsProfit / unitsStaked) * 100) : 0;
+
+    const dailySeries = dates.map(d => daily.get(d)?.pnl || 0);
+    const volDaily = round2(stdDev(dailySeries));
+
+    // CLV stats (view-based)
+    const clvVals = bets.map(clvPct).filter(v => v !== null);
+    const clvCount = clvVals.length;
+    const clvAvg = clvCount ? round2(clvVals.reduce((a,b)=>a+b,0) / clvCount) : 0;
+    const clvPos = clvCount ? clvVals.filter(v => v > 0).length : 0;
+    const clvPosRate = clvCount ? round2((clvPos / clvCount) * 100) : 0;
+
+    // streaks (settled chronological, push breaks both)
+    let bestWinStreak = 0, bestLoseStreak = 0;
+    let curW = 0, curL = 0;
+    const chrono = [...settled].sort((a,b)=>{
+      if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return String(a.createdAt||"") < String(b.createdAt||"") ? -1 : 1;
+    });
+    for(const b of chrono){
+      if(b.result === "win"){
+        curW++; bestWinStreak = Math.max(bestWinStreak, curW);
+        curL = 0;
+      }else if(b.result === "loss"){
+        curL++; bestLoseStreak = Math.max(bestLoseStreak, curL);
+        curW = 0;
+      }else{
+        curW = 0; curL = 0;
+      }
+    }
+
+    return {
+      totalBets, settledBets, wins, losses, pushes,
+      totalStaked, totalProfit, roi, winRate,
+      avgOdds, avgStake, maxDD, volDaily,
+      startBR, currentBR, peakBR, growthPct,
+      unitSize, unitsStaked, unitsProfit, roiUnits,
+      clvCount, clvAvg, clvPosRate,
+      bestWinStreak, bestLoseStreak,
+      bestDay, worstDay
+    };
   }
 
-  function renderMetrics(){
-    const s = getSummary();
-
-    els.mTotal.textContent = fmtMoney(s.pnl);
-    els.mTotal.classList.remove("green","red");
-    if(s.pnl > 0) els.mTotal.classList.add("green");
-    if(s.pnl < 0) els.mTotal.classList.add("red");
-
-    els.mROI.textContent = fmtMoney(s.roi) + "%";
-    els.mROI.classList.remove("green","red");
-    if(s.roi > 0) els.mROI.classList.add("green");
-    if(s.roi < 0) els.mROI.classList.add("red");
-
-    els.mWLP.textContent = `${s.w}–${s.l}–${s.p}`;
-
-    const last = state.bets[0]?.createdAt || null;
-    els.lastUpdated.textContent = last ? `Updated: ${new Date(last).toLocaleString()}` : "No bets yet";
+  // ---------- chart styling helpers ----------
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function rgbaFrom(hexOrRgb, alpha){
+    const s = String(hexOrRgb || "").trim();
+    if(s.startsWith("#")){
+      const hex = s.slice(1);
+      const r = parseInt(hex.slice(0,2),16);
+      const g = parseInt(hex.slice(2,4),16);
+      const b = parseInt(hex.slice(4,6),16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    if(s.startsWith("rgb(")){
+      return s.replace("rgb(", "rgba(").replace(")", `,${alpha})`);
+    }
+    return `rgba(255,255,255,${alpha})`;
   }
 
-  function buildChart(range){
-    const map = dailyPnlMap(range);
+  const zeroLinePlugin = {
+    id: "zeroLine",
+    afterDraw(chart){
+      const yScale = chart.scales?.y;
+      if(!yScale) return;
+      const y0 = yScale.getPixelForValue(0);
+      const {ctx, chartArea} = chart;
+      if(!chartArea) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(chartArea.left, y0);
+      ctx.lineTo(chartArea.right, y0);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6,6]);
+      ctx.strokeStyle = "rgba(147,164,189,.35)";
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  // ---------- chart ----------
+  function buildChart(bets){
+    const mode = state.chartMode;
+    const daily = dailyPnlMapFrom(bets);
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     let start, end;
 
-    if(range === "daily"){
+    if(state.range === "daily"){
       start = new Date(today); start.setDate(start.getDate()-29);
       end = new Date(today);
-    }else if(range === "monthly"){
+    } else if(state.range === "monthly"){
       start = new Date(today.getFullYear(), today.getMonth(), 1);
       end = new Date(today.getFullYear(), today.getMonth()+1, 0);
-    }else{
-      const dates = state.bets.map(b => toDate(b.date)).sort((a,b)=>a-b);
-      start = dates[0] ? new Date(dates[0].getFullYear(), dates[0].getMonth(), dates[0].getDate()) : new Date(today);
-      const last = dates[dates.length-1] || today;
+    } else {
+      const ds = bets.map(b => toDate(b.date)).sort((a,b)=>a-b);
+      start = ds[0] ? new Date(ds[0].getFullYear(), ds[0].getMonth(), ds[0].getDate()) : new Date(today);
+      const last = ds[ds.length-1] || today;
       end = new Date(last.getFullYear(), last.getMonth(), last.getDate());
     }
 
     const labels = [];
     const values = [];
+    const bars = [];
     let cum = 0;
+    const startBR = Number(state.settings.startingBankroll) || 0;
+
     const cur = new Date(start);
     while(cur <= end){
       const key = cur.toISOString().slice(0,10);
-      const daily = map.get(key)?.pnl || 0;
-      cum = round2(cum + daily);
+      const dp = daily.get(key)?.pnl || 0;
+      bars.push(dp);
+      cum = round2(cum + dp);
       labels.push(key);
-      values.push(cum);
+
+      if(mode === "pnl") values.push(cum);
+      if(mode === "bankroll") values.push(round2(startBR + cum));
+
       cur.setDate(cur.getDate()+1);
     }
 
-    els.chartSub.textContent =
-      range === "daily" ? "Cumulative P&L • Last 30 days" :
-      range === "monthly" ? "Cumulative P&L • This month" :
-      "Cumulative P&L • All time";
-
-    const ctx = els.chartCanvas.getContext("2d");
+    const ctx = els.mainChart.getContext("2d");
     if(chart) chart.destroy();
+
+    const gridColor = "rgba(31,43,61,.35)";
+    const tickColor = "rgba(147,164,189,.85)";
+    const green = cssVar("--green") || "#15c67a";
+    const red = cssVar("--red") || "#ff4d4d";
+
+    if(mode === "dailybars"){
+      els.chartSub.textContent = "Daily P&L bars (auto green/red) + 0 baseline.";
+      chart = new Chart(ctx, {
+        type:"bar",
+        data:{
+          labels,
+          datasets:[{
+            data: bars,
+            borderWidth: 0,
+            backgroundColor: (c) => (c.raw ?? 0) >= 0 ? rgbaFrom(green, .35) : rgbaFrom(red, .35)
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{
+            legend:{display:false},
+            tooltip:{ callbacks:{ label:(c)=>" " + ((c.raw>0)?"+":"") + fmtMoney(c.raw) } }
+          },
+          scales:{
+            x:{
+              ticks:{ color:tickColor, maxTicksLimit:7, callback:function(v){ return this.getLabelForValue(v).slice(5);} },
+              grid:{ color:gridColor }
+            },
+            y:{ ticks:{ color:tickColor }, grid:{ color:gridColor } }
+          }
+        },
+        plugins:[zeroLinePlugin]
+      });
+      return;
+    }
+
+    const lastVal = values[values.length-1] ?? 0;
+    const lineColor = lastVal >= 0 ? green : red;
+
+    els.chartSub.textContent = mode === "bankroll"
+      ? "Bankroll curve = Starting Bankroll + cumulative P&L (filtered) + 0 baseline."
+      : "Cumulative P&L (filtered) + 0 baseline.";
 
     chart = new Chart(ctx, {
       type:"line",
-      data:{ labels, datasets:[{ data: values, tension: 0.28, pointRadius: 0, borderWidth: 2 }] },
+      data:{
+        labels,
+        datasets:[{
+          data: values,
+          tension: 0.28,
+          pointRadius: 0,
+          borderWidth: 2,
+          borderColor: lineColor,
+          fill: true,
+          backgroundColor: (context) => {
+            const chart = context.chart;
+            const {ctx, chartArea} = chart;
+            if(!chartArea) return rgbaFrom(lineColor, .10);
+            const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            g.addColorStop(0, rgbaFrom(lineColor, .18));
+            g.addColorStop(1, "rgba(0,0,0,0)");
+            return g;
+          }
+        }]
+      },
       options:{
         responsive:true,
         maintainAspectRatio:false,
         plugins:{
-          legend:{ display:false },
+          legend:{display:false},
           tooltip:{ callbacks:{ label:(c)=>" " + fmtMoney(c.raw) } }
         },
         scales:{
           x:{
-            ticks:{
-              color:"rgba(147,164,189,.85)",
-              maxTicksLimit:7,
-              callback:function(val){
-                const s = this.getLabelForValue(val);
-                return s.slice(5);
-              }
-            },
-            grid:{ color:"rgba(31,43,61,.35)" }
+            ticks:{ color:tickColor, maxTicksLimit:7, callback:function(v){ return this.getLabelForValue(v).slice(5);} },
+            grid:{ color:gridColor }
           },
-          y:{
-            ticks:{ color:"rgba(147,164,189,.85)" },
-            grid:{ color:"rgba(31,43,61,.35)" }
-          }
+          y:{ ticks:{ color:tickColor }, grid:{ color:gridColor } }
         }
-      }
+      },
+      plugins:[zeroLinePlugin]
     });
   }
 
+  // ---------- calendar ----------
   function monthName(y,m){
     return new Date(y,m,1).toLocaleString(undefined,{month:"long", year:"numeric"});
   }
   function startOfWeekMonday(d){
-    const day = d.getDay(); // 0 Sun ... 6 Sat
+    const day = d.getDay();
     const diff = (day === 0 ? 6 : day - 1);
     const res = new Date(d);
     res.setDate(d.getDate() - diff);
@@ -674,9 +1375,105 @@
     const abs = Math.min(Math.abs(pnl), maxAbs);
     const t = abs / maxAbs;
     const alpha = 0.10 + 0.40 * t;
-    if(pnl > 0) return { color:"rgba(21,198,122,1)", alpha };
-    if(pnl < 0) return { color:"rgba(255,77,77,1)", alpha };
+    if(pnl > 0) return { color: "rgba(21,198,122,1)", alpha };
+    if(pnl < 0) return { color: "rgba(255,77,77,1)", alpha };
     return { color:"transparent", alpha:0 };
+  }
+
+  function openDayDrawer(dateISO){
+    state.ui.selectedDay = dateISO;
+    save();
+    renderCalendar();
+    renderDayDrawer(dateISO);
+  }
+
+  function closeDayDrawer(){
+    state.ui.selectedDay = "";
+    save();
+    els.dayDrawer.style.display = "none";
+    renderCalendar();
+  }
+
+  function renderDayDrawer(dateISO){
+    const dayBets = state.bets.filter(b => b.date === dateISO);
+    const settled = dayBets.filter(isSettled);
+    const pnl = round2(settled.reduce((s,b)=>s + profitFor(b), 0));
+    const pend = dayBets.filter(b => String(b.result||"pending").toLowerCase()==="pending").length;
+
+    els.drawerTitle.textContent = `${dateISO} • ${dayBets.length} bet(s)`;
+    els.drawerSub.textContent = `Day P&L (settled): ${pnl>0?"+":""}${fmtMoney(pnl)} • Pending: ${pend}`;
+    els.drawerList.innerHTML = "";
+
+    if(dayBets.length === 0){
+      els.drawerList.innerHTML = `<div class="small">No bets on this day.</div>`;
+      els.dayDrawer.style.display = "block";
+      return;
+    }
+
+    for(const b of dayBets){
+      const p = isSettled(b) ? profitFor(b) : 0;
+      const r = String(b.result||"pending").toLowerCase();
+      const clv = clvPct(b);
+      const item = document.createElement("div");
+      item.className = "drawerItem";
+
+      const settleBtns = document.createElement("div");
+      settleBtns.className = "right";
+
+      const badge = document.createElement("span");
+      badge.className = "badge mono";
+      badge.textContent = `Result: ${r}`;
+
+      const pnlSpan = document.createElement("span");
+      pnlSpan.className = "badge mono";
+      pnlSpan.style.borderColor = "rgba(255,255,255,.10)";
+      pnlSpan.style.color = p>0 ? "var(--green)" : p<0 ? "var(--red)" : "var(--muted)";
+      pnlSpan.textContent = `P&L: ${(p===0) ? "0.00" : (p>0?"+":"") + fmtMoney(p)}`;
+
+      const btnW = document.createElement("button");
+      btnW.className = "btn btnMini btnWin";
+      btnW.textContent = "Win";
+      btnW.onclick = () => { b.result="win"; save(); renderAll(); openDayDrawer(dateISO); };
+
+      const btnL = document.createElement("button");
+      btnL.className = "btn btnMini btnLoss";
+      btnL.textContent = "Loss";
+      btnL.onclick = () => { b.result="loss"; save(); renderAll(); openDayDrawer(dateISO); };
+
+      const btnP = document.createElement("button");
+      btnP.className = "btn btnMini btnPush";
+      btnP.textContent = "Push";
+      btnP.onclick = () => { b.result="push"; save(); renderAll(); openDayDrawer(dateISO); };
+
+      const btnE = document.createElement("button");
+      btnE.className = "btn btnMini";
+      btnE.textContent = "Edit";
+      btnE.onclick = () => openEditModal(b.id);
+
+      settleBtns.appendChild(badge);
+      settleBtns.appendChild(pnlSpan);
+      settleBtns.appendChild(btnW);
+      settleBtns.appendChild(btnL);
+      settleBtns.appendChild(btnP);
+      settleBtns.appendChild(btnE);
+
+      item.innerHTML = `
+        <div class="left">
+          <div><strong>${escapeHTML(b.event)}</strong></div>
+          <div class="small">${escapeHTML(b.pick)}</div>
+          <div class="small">${escapeHTML((b.sport||"") + (b.marketType ? " • " + b.marketType : ""))}</div>
+          <div class="small">${escapeHTML(b.tags || "")}</div>
+          <div class="small">${escapeHTML(b.notes || "")}</div>
+          <div class="small mono" style="margin-top:6px;">
+            Odds: ${Number(b.odds).toFixed(2)} • Stake: ${Number(b.stake).toFixed(2)} • CLV: ${(clv===null) ? "—" : (clv>0?"+":"") + clv.toFixed(2) + "%"}
+          </div>
+        </div>
+      `;
+      item.appendChild(settleBtns);
+      els.drawerList.appendChild(item);
+    }
+
+    els.dayDrawer.style.display = "block";
   }
 
   function renderCalendar(){
@@ -690,21 +1487,25 @@
       els.dowRow.appendChild(el);
     }
 
-    const dailyAll = dailyPnlMap("all");
+    const allBets = state.bets;
+    const daily = dailyPnlMapFrom(allBets);
     const monthStart = new Date(calYear, calMonth, 1);
     const monthEnd = new Date(calYear, calMonth+1, 0);
 
-    let monthP = 0;
-    for(const [k,v] of dailyAll.entries()){
+    let monthP=0, best=null, worst=null;
+    for(const [k,v] of daily.entries()){
       const dt = toDate(k);
-      if(dt >= monthStart && dt <= monthEnd) monthP += v.pnl;
+      if(dt >= monthStart && dt <= monthEnd){
+        monthP += v.pnl;
+        if(best===null || v.pnl > best.pnl) best = {date:k, pnl:v.pnl};
+        if(worst===null || v.pnl < worst.pnl) worst = {date:k, pnl:v.pnl};
+      }
     }
     monthP = round2(monthP);
     els.monthPnl.textContent = `Month P&L: ${fmtMoney(monthP)}`;
-    els.monthPnl.style.borderColor =
-      monthP > 0 ? "rgba(21,198,122,.35)" :
-      monthP < 0 ? "rgba(255,77,77,.35)" :
-      "rgba(255,255,255,.10)";
+    els.mMonthTotal.textContent = fmtMoney(monthP);
+    els.mBestDayMonth.textContent = best ? `${best.date} (${best.pnl>0?"+":""}${fmtMoney(best.pnl)})` : "—";
+    els.mWorstDayMonth.textContent = worst ? `${worst.date} (${worst.pnl>0?"+":""}${fmtMoney(worst.pnl)})` : "—";
 
     const gridStart = startOfWeekMonday(monthStart);
     const gridEnd = new Date(monthEnd);
@@ -717,91 +1518,726 @@
     const cells = [];
     for(let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate()+1)){
       const key = d.toISOString().slice(0,10);
-      const pnl = dailyAll.get(key)?.pnl || 0;
-      const count = dailyAll.get(key)?.count || 0;
+      const cell = daily.get(key);
+      const pnl = cell?.pnl || 0;
+      const countAll = cell?.countAll || 0;
+      const countSettled = cell?.countSettled || 0;
       maxAbs = Math.max(maxAbs, Math.abs(pnl));
-      cells.push({ key, date: new Date(d), pnl, count });
+      cells.push({ key, date: new Date(d), pnl, countAll, countSettled });
     }
 
     els.calGrid.innerHTML = "";
     const tKey = todayISO();
+    const sel = state.ui.selectedDay;
 
     for(const c of cells){
       const inMonth = c.date.getMonth() === calMonth;
       const day = document.createElement("div");
-      day.className = "day" + (inMonth ? "" : " off");
+      day.className = "day" + (inMonth ? "" : " off") + (sel && sel === c.key ? " selected" : "");
 
       const heat = heatForPnl(c.pnl, maxAbs);
       day.style.setProperty("--heatColor", heat.color);
       day.style.setProperty("--heatAlpha", String(heat.alpha));
 
       const pnlClass = c.pnl > 0 ? "green" : c.pnl < 0 ? "red" : "zero";
-
       day.innerHTML = `
         <div class="dayNum">
           <span class="${c.key === tKey ? "mono" : ""}">${c.date.getDate()}</span>
-          <span class="mini">${c.count ? c.count + " bets" : ""}</span>
+          <span class="mini">${c.countAll ? `${c.countAll} bets` : ""}</span>
         </div>
-        <div class="pnl ${pnlClass}">${c.pnl === 0 ? "—" : (c.pnl > 0 ? "+" : "") + fmtMoney(c.pnl)}</div>
+        <div class="pnl ${pnlClass}">${c.pnl === 0 ? "—" : (c.pnl>0?"+":"") + fmtMoney(c.pnl)}</div>
         <div class="mini mono">${c.key}</div>
       `;
+
+      const pend = state.bets.filter(b => b.date === c.key && String(b.result||"pending").toLowerCase()==="pending").length;
+      day.title = `Date: ${c.key}
+Bets: ${c.countAll}
+Settled: ${c.countSettled}
+Pending: ${pend}
+Day P&L (settled): ${(c.pnl>0?"+":"") + fmtMoney(c.pnl)}`;
+
+      if(inMonth){
+        day.addEventListener("click", () => openDayDrawer(c.key));
+      }
       els.calGrid.appendChild(day);
+    }
+
+    if(state.ui.selectedDay){
+      renderDayDrawer(state.ui.selectedDay);
     }
   }
 
-  function resPillClass(r){
-    r = (r || "pending").toLowerCase();
-    if(r === "win") return "resPill win";
-    if(r === "loss") return "resPill loss";
-    if(r === "push") return "resPill push";
-    return "resPill pending";
+  // ---------- reports/breakdowns ----------
+  function weekStartMondayISO(dateStr){
+    const d = toDate(dateStr);
+    const day = d.getDay();
+    const diff = (day === 0 ? 6 : day - 1);
+    const m = new Date(d);
+    m.setDate(d.getDate() - diff);
+    m.setHours(0,0,0,0);
+    const off = m.getTimezoneOffset();
+    const local = new Date(m.getTime() - off*60000);
+    return local.toISOString().slice(0,10);
+  }
+  function monthKey(dateStr){
+    const d = toDate(dateStr);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    return `${y}-${m}`;
+  }
+  function aggMap(rows, keyFn){
+    const m = new Map();
+    for(const r of rows){
+      const key = keyFn(r) || "Unknown";
+      if(!m.has(key)) m.set(key, {bets:0, staked:0, profit:0});
+      const a = m.get(key);
+      a.bets += 1;
+      a.staked += Number(r.stake)||0;
+      a.profit += profitFor(r);
+    }
+    for(const a of m.values()){
+      a.staked = round2(a.staked);
+      a.profit = round2(a.profit);
+      a.roi = a.staked > 0 ? round2((a.profit/a.staked)*100) : 0;
+    }
+    return m;
+  }
+  function oddsBucket(odds){
+    const o = Number(odds);
+    if(!Number.isFinite(o)) return "unknown";
+    if(o < 1.50) return "<1.50";
+    if(o < 2.00) return "1.50–1.99";
+    if(o < 3.00) return "2.00–2.99";
+    return "3.00+";
+  }
+  function stakeBucketUnits(stake, unitSize){
+    const s = Number(stake);
+    if(!Number.isFinite(s) || unitSize <= 0) return "unknown";
+    const u = s / unitSize;
+    if(u < 0.5) return "<0.5u";
+    if(u < 1.0) return "0.5–0.99u";
+    if(u < 2.0) return "1.0–1.99u";
+    return "2.0u+";
   }
 
-  function renderBetsList(){
+  function renderReports(bets, stats){
+    const settled = bets.filter(isSettled);
+
+    const weekly = aggMap(settled, b => weekStartMondayISO(b.date));
+    const weekKeys = Array.from(weekly.keys()).sort();
+    const last12 = weekKeys.slice(Math.max(0, weekKeys.length - 12));
+    els.tblWeekly.innerHTML = "";
+    for(const k of last12){
+      const v = weekly.get(k);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="mono">${k}</td>
+        <td class="right mono">${v.bets}</td>
+        <td class="right mono">${fmtMoney(v.staked)}</td>
+        <td class="right mono">${v.profit>0?"+":""}${fmtMoney(v.profit)}</td>
+        <td class="right mono">${fmtPct(v.roi)}</td>
+      `;
+      els.tblWeekly.appendChild(tr);
+    }
+    if(last12.length === 0){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="5" class="small">No settled bets in this view.</td>`;
+      els.tblWeekly.appendChild(tr);
+    }
+
+    const monthly = aggMap(settled, b => monthKey(b.date));
+    const monthEntries = Array.from(monthly.entries()).sort((a,b)=>a[0]<b[0]?-1:1);
+
+    let best=null, worst=null;
+    for(const [k,v] of monthEntries){
+      if(best===null || v.profit > best.v.profit) best = {k, v};
+      if(worst===null || v.profit < worst.v.profit) worst = {k, v};
+    }
+    els.bestWorstMonth.textContent = (best && worst)
+      ? `Best: ${best.k} (${best.v.profit>0?"+":""}${fmtMoney(best.v.profit)}), Worst: ${worst.k} (${worst.v.profit>0?"+":""}${fmtMoney(worst.v.profit)})`
+      : "Best/Worst: —";
+
+    els.tblMonthly.innerHTML = "";
+    for(const [k,v] of monthEntries){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="mono">${k}</td>
+        <td class="right mono">${v.bets}</td>
+        <td class="right mono">${fmtMoney(v.staked)}</td>
+        <td class="right mono">${v.profit>0?"+":""}${fmtMoney(v.profit)}</td>
+        <td class="right mono">${fmtPct(v.roi)}</td>
+      `;
+      els.tblMonthly.appendChild(tr);
+    }
+    if(monthEntries.length === 0){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="5" class="small">No settled bets in this view.</td>`;
+      els.tblMonthly.appendChild(tr);
+    }
+
+    const unitSize = stats.unitSize;
+    const bySport = aggMap(settled, b => (b.sport || "Unknown").trim() || "Unknown");
+    const byMarket = aggMap(settled, b => (b.marketType || "Unknown").trim() || "Unknown");
+    const byOdds = aggMap(settled, b => oddsBucket(b.odds));
+    const byStake = aggMap(settled, b => stakeBucketUnits(b.stake, unitSize));
+
+    const rows = [];
+    for(const [k,v] of bySport.entries()) rows.push({group:`Sport: ${k}`, ...v});
+    for(const [k,v] of byMarket.entries()) rows.push({group:`Market: ${k}`, ...v});
+    for(const [k,v] of byOdds.entries()) rows.push({group:`Odds: ${k}`, ...v});
+    for(const [k,v] of byStake.entries()) rows.push({group:`Stake: ${k}`, ...v});
+
+    rows.sort((a,b)=> (b.profit - a.profit) || (a.group < b.group ? -1 : 1));
+
+    els.tblBreakdowns.innerHTML = "";
+    for(const r of rows){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHTML(r.group)}</td>
+        <td class="right mono">${r.bets}</td>
+        <td class="right mono">${r.profit>0?"+":""}${fmtMoney(r.profit)}</td>
+        <td class="right mono">${fmtPct(r.roi)}</td>
+      `;
+      els.tblBreakdowns.appendChild(tr);
+    }
+    if(rows.length === 0){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="4" class="small">No settled bets in this view.</td>`;
+      els.tblBreakdowns.appendChild(tr);
+    }
+
+    els.clvCount.textContent = String(stats.clvCount);
+    els.clvAvg.textContent = fmtPct(stats.clvAvg);
+    els.clvPosRate.textContent = fmtPct(stats.clvPosRate);
+  }
+
+  // ---------- UI sync ----------
+  function setFormResult(val){
+    formResult = val;
+    els.resultVal.textContent = val;
+    for(const b of Array.from(els.resultSeg.querySelectorAll(".segBtn"))){
+      b.classList.toggle("active", b.dataset.val === val);
+    }
+  }
+  function setEditResult(val){
+    editResult = val;
+    els.eResultVal.textContent = val;
+    for(const b of Array.from(els.editResultSeg.querySelectorAll(".segBtn"))){
+      b.classList.toggle("active", b.dataset.val === val);
+    }
+  }
+  function setUnitMode(mode){
+    state.settings.unitMode = (mode === "percent") ? "percent" : "fixed";
+    for(const b of Array.from(els.unitModeSeg.querySelectorAll(".segBtn"))){
+      b.classList.toggle("active", b.dataset.val === state.settings.unitMode);
+    }
+    const u = getUnitSize();
+    els.unitHint.textContent = u > 0 ? `Current unit size: $${fmtMoney(u)}` : `Set starting bankroll/unit to enable units.`;
+  }
+
+  function syncSettingsUI(){
+    els.setStartBR.value = String(state.settings.startingBankroll ?? 0);
+    els.setUnitValue.value = String(state.settings.unitValue ?? 10);
+    els.setUnitPct.value = String(state.settings.unitPct ?? 1);
+    setUnitMode(state.settings.unitMode);
+  }
+
+  // FIXED: only one syncFiltersUI (no duplicate override)
+  function syncFiltersUI(){
+    els.chartMode.value = state.chartMode;
+    els.fltSport.value = state.filters.sport;
+    els.fltMarket.value = state.filters.market;
+    els.fltResult.value = state.filters.result;
+    els.fltFrom.value = state.filters.from;
+    els.fltTo.value = state.filters.to;
+  }
+
+  function clearForm(){
+    els.fDate.value = todayISO();
+    els.fEvent.value = "";
+    els.fPick.value = "";
+    els.fSport.value = "";
+    els.fMarket.value = "";
+    els.fOdds.value = "";
+    els.fCloseOdds.value = "";
+    els.fStake.value = "";
+    els.fTags.value = "";
+    els.fNotes.value = "";
+    setFormResult("pending");
+  }
+
+  // ---------- add / edit / delete ----------
+  function validateOdds(odds){ return Number.isFinite(odds) && odds > 1.0; }
+  function validateStake(stake){ return Number.isFinite(stake) && stake > 0; }
+
+  function addBet(){
+    const date = els.fDate.value || todayISO();
+    const event = (els.fEvent.value || "").trim();
+    const pick  = (els.fPick.value || "").trim();
+    const sport = (els.fSport.value || "").trim();
+    const marketType = (els.fMarket.value || "").trim();
+    const odds = Number(els.fOdds.value);
+    const closeOdds = (els.fCloseOdds.value.trim() === "") ? null : Number(els.fCloseOdds.value);
+    const stake = Number(els.fStake.value);
+    const tags = (els.fTags.value || "").trim();
+    const notes = (els.fNotes.value || "").trim();
+
+    if(!event) return alert("Event / Market is required.");
+    if(!pick) return alert("Pick is required.");
+    if(!validateOdds(odds)) return alert("Odds must be > 1.00");
+    if(closeOdds !== null && !validateOdds(closeOdds)) return alert("Closing odds must be > 1.00 or empty.");
+    if(!validateStake(stake)) return alert("Stake must be > 0.");
+
+    state.bets.unshift({
+      id: state.nextId++,
+      date, event, pick, sport, marketType,
+      odds, closingOdds: closeOdds,
+      stake,
+      result: formResult,
+      tags,
+      notes,
+      createdAt: new Date().toISOString()
+    });
+
+    save();
+    renderAll();
+    clearForm();
+  }
+
+  function deleteBet(id){
+    state.bets = state.bets.filter(b => b.id !== id);
+    save();
+    renderAll();
+    if(state.ui.selectedDay) renderDayDrawer(state.ui.selectedDay);
+  }
+
+  function openEditModal(id){
+    const b = state.bets.find(x => x.id === id);
+    if(!b) return;
+    editingId = id;
+
+    els.modalSub.textContent = `#${id} • ${b.date} • ${b.event}`;
+    els.eDate.value = b.date;
+    els.eEvent.value = b.event || "";
+    els.ePick.value = b.pick || "";
+    els.eSport.value = b.sport || "";
+    els.eMarket.value = b.marketType || "";
+    els.eOdds.value = Number(b.odds).toFixed(2);
+    els.eCloseOdds.value = (b.closingOdds === null || b.closingOdds === undefined) ? "" : String(b.closingOdds);
+    els.eStake.value = Number(b.stake).toFixed(2);
+    els.eTags.value = b.tags || "";
+    els.eNotes.value = b.notes || "";
+    setEditResult(String(b.result || "pending").toLowerCase());
+
+    els.modalBackdrop.style.display = "flex";
+  }
+
+  function closeEditModal(){
+    editingId = null;
+    els.modalBackdrop.style.display = "none";
+  }
+
+  function saveEdit(){
+    const b = state.bets.find(x => x.id === editingId);
+    if(!b) return;
+
+    const date = els.eDate.value || b.date;
+    const event = (els.eEvent.value || "").trim();
+    const pick  = (els.ePick.value || "").trim();
+    const sport = (els.eSport.value || "").trim();
+    const marketType = (els.eMarket.value || "").trim();
+    const odds = Number(els.eOdds.value);
+    const closeOdds = (els.eCloseOdds.value.trim() === "") ? null : Number(els.eCloseOdds.value);
+    const stake = Number(els.eStake.value);
+    const tags = (els.eTags.value || "").trim();
+    const notes = (els.eNotes.value || "").trim();
+
+    if(!event) return alert("Event / Market is required.");
+    if(!pick) return alert("Pick is required.");
+    if(!validateOdds(odds)) return alert("Odds must be > 1.00");
+    if(closeOdds !== null && !validateOdds(closeOdds)) return alert("Closing odds must be > 1.00 or empty.");
+    if(!validateStake(stake)) return alert("Stake must be > 0.");
+
+    b.date = date;
+    b.event = event;
+    b.pick = pick;
+    b.sport = sport;
+    b.marketType = marketType;
+    b.odds = odds;
+    b.closingOdds = closeOdds;
+    b.stake = stake;
+    b.result = editResult;
+    b.tags = tags;
+    b.notes = notes;
+
+    save();
+    closeEditModal();
+    renderAll();
+    if(state.ui.selectedDay) renderDayDrawer(state.ui.selectedDay);
+  }
+
+  function settleBet(b, res){
+    b.result = res;
+    save();
+    renderAll();
+    if(state.ui.selectedDay) renderDayDrawer(state.ui.selectedDay);
+  }
+
+  // ---------- exports ----------
+  function exportJSON(){
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "pro-bet-tracker.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function toCSVRow(fields){
+    return fields.map(f => {
+      const s = String(f ?? "");
+      if(/[,"\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+      return s;
+    }).join(",");
+  }
+
+  function exportCSV(){
+    const header = [
+      "id","date","event","pick","sport","marketType","odds","closingOdds","stake","result","profit","clvPct","tags","notes","createdAt"
+    ];
+
+    const rows = [toCSVRow(header)];
+    for(const b of state.bets){
+      const profit = isSettled(b) ? profitFor(b) : 0;
+      const clv = clvPct(b);
+      rows.push(toCSVRow([
+        b.id, b.date, b.event, b.pick, b.sport, b.marketType,
+        Number(b.odds).toFixed(2),
+        (b.closingOdds === null || b.closingOdds === undefined) ? "" : Number(b.closingOdds).toFixed(2),
+        Number(b.stake).toFixed(2),
+        b.result,
+        profit,
+        (clv === null) ? "" : clv.toFixed(2),
+        b.tags || "",
+        b.notes || "",
+        b.createdAt || ""
+      ]));
+    }
+
+    const blob = new Blob([rows.join("\n")], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "pro-bet-tracker.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importJSON(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const p = JSON.parse(String(reader.result));
+        const bets = Array.isArray(p.bets) ? p.bets : [];
+        state.bets = bets.map(b => normalizeBet({
+          id: b.id,
+          date: b.date,
+          event: b.event,
+          pick: b.pick,
+          sport: b.sport,
+          marketType: b.marketType,
+          odds: b.odds,
+          closingOdds: b.closingOdds,
+          stake: b.stake,
+          result: b.result,
+          tags: b.tags,
+          notes: b.notes,
+          createdAt: b.createdAt
+        })).filter(Boolean);
+
+        const maxId = state.bets.reduce((m,b)=>Math.max(m,b.id),0);
+        state.nextId = (Number(p.nextId) && Number(p.nextId) > maxId) ? Number(p.nextId) : (maxId + 1);
+
+        state.range = p.range || state.range || "daily";
+        state.chartMode = p.chartMode || state.chartMode || "pnl";
+
+        state.filters = {
+          sport: String(p.filters?.sport ?? ""),
+          market: String(p.filters?.market ?? ""),
+          result: String(p.filters?.result ?? ""),
+          from: String(p.filters?.from ?? ""),
+          to: String(p.filters?.to ?? "")
+        };
+
+        state.settings = {
+          startingBankroll: safeNum(p.settings?.startingBankroll) ?? state.settings.startingBankroll,
+          unitMode: (p.settings?.unitMode === "percent") ? "percent" : "fixed",
+          unitValue: safeNum(p.settings?.unitValue) ?? state.settings.unitValue,
+          unitPct: safeNum(p.settings?.unitPct) ?? state.settings.unitPct
+        };
+
+        state.ui = { selectedDay: String(p.ui?.selectedDay ?? "") };
+
+        save();
+        syncSettingsUI();
+        syncFiltersUI();
+        renderAll();
+      }catch(e){
+        alert("Import failed: " + e.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function parseCSVLine(line){
+    const out = [];
+    let cur = "";
+    let inQ = false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(inQ){
+        if(ch === '"'){
+          if(line[i+1] === '"'){ cur += '"'; i++; }
+          else inQ = false;
+        } else cur += ch;
+      } else {
+        if(ch === '"') inQ = true;
+        else if(ch === ','){ out.push(cur); cur=""; }
+        else cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+
+  function importCSV(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const text = String(reader.result || "").replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim();
+        if(!text) return alert("CSV is empty.");
+
+        const lines = text.split("\n").filter(x => x.trim().length);
+        if(lines.length < 2) return alert("CSV needs a header row and at least 1 data row.");
+
+        const header = parseCSVLine(lines[0]).map(h => h.trim());
+        const idx = new Map(header.map((h,i)=>[h,i]));
+
+        const requiredAny = ["date","event","stake","odds","result"];
+        for(const r of requiredAny){
+          if(!idx.has(r)) return alert(`CSV missing required column: ${r}`);
+        }
+
+        const newBets = [];
+        for(let li=1; li<lines.length; li++){
+          const row = parseCSVLine(lines[li]);
+          const obj = {
+            id: idx.has("id") ? row[idx.get("id")] : null,
+            date: row[idx.get("date")],
+            event: row[idx.get("event")],
+            pick: idx.has("pick") ? row[idx.get("pick")] : "",
+            sport: idx.has("sport") ? row[idx.get("sport")] : "",
+            marketType: idx.has("marketType") ? row[idx.get("marketType")] : "",
+            odds: row[idx.get("odds")],
+            closingOdds: idx.has("closingOdds") ? row[idx.get("closingOdds")] : "",
+            stake: row[idx.get("stake")],
+            result: row[idx.get("result")],
+            tags: idx.has("tags") ? row[idx.get("tags")] : "",
+            notes: idx.has("notes") ? row[idx.get("notes")] : "",
+            createdAt: idx.has("createdAt") ? row[idx.get("createdAt")] : ""
+          };
+
+          const nb = normalizeBet(obj, {allowGenerateId:true});
+          if(nb) newBets.push(nb);
+        }
+
+        if(newBets.length === 0) return alert("No valid rows found in CSV.");
+
+        const used = new Set(state.bets.map(b=>b.id));
+        for(const b of newBets){
+          if(used.has(b.id)) b.id = state.nextId++;
+          used.add(b.id);
+        }
+
+        state.bets = [...newBets.reverse(), ...state.bets];
+        state.nextId = Math.max(state.nextId, state.bets.reduce((m,b)=>Math.max(m,b.id),0) + 1);
+
+        save();
+        renderAll();
+        alert(`Imported ${newBets.length} bet(s) from CSV.`);
+      }catch(e){
+        alert("CSV import failed: " + e.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function normalizeBet(raw, opts={allowGenerateId:false}){
+    const idRaw = raw.id;
+    let id = Number(idRaw);
+    if(!Number.isFinite(id) || id <= 0){
+      id = opts.allowGenerateId ? state.nextId++ : state.nextId++;
+    }
+
+    const date = String(raw.date || "").slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+
+    const event = String(raw.event || "").trim();
+    const pick = String(raw.pick || "").trim();
+    const odds = Number(raw.odds);
+    const stake = Number(raw.stake);
+    if(!event) return null;
+    if(!validateOdds(odds)) return null;
+    if(!validateStake(stake)) return null;
+
+    const closingOddsRaw = String(raw.closingOdds ?? "").trim();
+    const closingOdds = (closingOddsRaw === "" || closingOddsRaw.toLowerCase() === "null") ? null : Number(closingOddsRaw);
+    if(closingOdds !== null && !validateOdds(closingOdds)) return null;
+
+    const result = String(raw.result || "pending").toLowerCase();
+    const okRes = ["pending","win","loss","push"].includes(result) ? result : "pending";
+
+    const createdAt = String(raw.createdAt || new Date().toISOString());
+    return {
+      id,
+      date,
+      event,
+      pick,
+      sport: String(raw.sport || "").trim(),
+      marketType: String(raw.marketType || "").trim(),
+      odds,
+      closingOdds,
+      stake,
+      result: okRes,
+      tags: String(raw.tags || "").trim(),
+      notes: String(raw.notes || "").trim(),
+      createdAt
+    };
+  }
+
+  function wipeAll(){
+    if(!confirm("Wipe all bets? This cannot be undone.")) return;
+    state.bets = [];
+    state.nextId = 1;
+    state.ui.selectedDay = "";
+    save();
+    closeDayDrawer();
+    renderAll();
+  }
+
+  // ---------- filter options ----------
+  function rebuildFilterOptions(){
+    const sports = new Set();
+    const markets = new Set();
+    for(const b of state.bets){
+      const s = String(b.sport||"").trim();
+      const m = String(b.marketType||"").trim();
+      if(s) sports.add(s);
+      if(m) markets.add(m);
+    }
+
+    const currentSport = state.filters.sport;
+    const currentMarket = state.filters.market;
+
+    els.fltSport.innerHTML = `<option value="">All</option>` +
+      Array.from(sports).sort().map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join("");
+
+    els.fltMarket.innerHTML = `<option value="">All</option>` +
+      Array.from(markets).sort().map(m => `<option value="${escapeHTML(m)}">${escapeHTML(m)}</option>`).join("");
+
+    state.filters.sport = Array.from(sports).includes(currentSport) ? currentSport : "";
+    state.filters.market = Array.from(markets).includes(currentMarket) ? currentMarket : "";
+    syncFiltersUI();
+  }
+
+  // ---------- bets list ----------
+  function renderBetsList(bets){
     els.betsTbody.innerHTML = "";
-    const shown = state.bets.slice(0, 40);
+    const shown = bets.slice(0, 90);
 
     for(const b of shown){
       const tr = document.createElement("tr");
-      const pnl = profitFor(b);
+      const pnl = isSettled(b) ? profitFor(b) : 0;
+      const clv = clvPct(b);
 
-      const resSel = document.createElement("select");
-      resSel.innerHTML = `
-        <option value="pending">pending</option>
-        <option value="win">win</option>
-        <option value="loss">loss</option>
-        <option value="push">push</option>
-      `;
-      resSel.value = (b.result || "pending").toLowerCase();
-      resSel.style.padding = "7px 8px";
-      resSel.style.borderRadius = "10px";
-      resSel.style.background = "rgba(0,0,0,.16)";
-      resSel.style.border = "1px solid rgba(255,255,255,.10)";
-      resSel.style.color = "var(--text)";
+      const settleWrap = document.createElement("div");
+      settleWrap.style.display = "flex";
+      settleWrap.style.gap = "8px";
+      settleWrap.style.flexWrap = "wrap";
 
-      resSel.onchange = () => {
-        b.result = resSel.value;
+      const btnW = document.createElement("button");
+      btnW.className = "btn btnMini btnWin";
+      btnW.textContent = "Win";
+      btnW.onclick = () => settleBet(b, "win");
+
+      const btnL = document.createElement("button");
+      btnL.className = "btn btnMini btnLoss";
+      btnL.textContent = "Loss";
+      btnL.onclick = () => settleBet(b, "loss");
+
+      const btnP = document.createElement("button");
+      btnP.className = "btn btnMini btnPush";
+      btnP.textContent = "Push";
+      btnP.onclick = () => settleBet(b, "push");
+
+      settleWrap.appendChild(btnW);
+      settleWrap.appendChild(btnL);
+      settleWrap.appendChild(btnP);
+
+      const closeInput = document.createElement("input");
+      closeInput.type = "number";
+      closeInput.step = "0.01";
+      closeInput.min = "1.01";
+      closeInput.placeholder = "Close";
+      closeInput.value = (b.closingOdds === null || b.closingOdds === undefined) ? "" : String(b.closingOdds);
+      closeInput.style.marginTop = "8px";
+      closeInput.onchange = () => {
+        const val = closeInput.value.trim();
+        if(val === ""){
+          b.closingOdds = null;
+        } else {
+          const n = Number(val);
+          if(!validateOdds(n)){
+            alert("Closing odds must be > 1.00 or empty.");
+            closeInput.value = (b.closingOdds ?? "");
+            return;
+          }
+          b.closingOdds = n;
+        }
         save();
         renderAll();
+        if(state.ui.selectedDay) renderDayDrawer(state.ui.selectedDay);
       };
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "btn btnMini";
+      editBtn.textContent = "Edit";
+      editBtn.onclick = () => openEditModal(b.id);
 
       const delBtn = document.createElement("button");
-      delBtn.className = "btn btnDanger";
+      delBtn.className = "btn btnMini btnDanger";
       delBtn.textContent = "Delete";
-      delBtn.onclick = () => {
-        state.bets = state.bets.filter(x => x.id !== b.id);
-        save();
-        renderAll();
-      };
+      delBtn.onclick = () => deleteBet(b.id);
 
       tr.innerHTML = `
         <td class="mono">${escapeHTML(b.date)}</td>
         <td>
           <div><strong>${escapeHTML(b.event)}</strong></div>
           <div class="small">${escapeHTML(b.pick)}</div>
+          <div class="small">${escapeHTML((b.sport||"") + (b.marketType ? " • " + b.marketType : ""))}</div>
+          ${b.tags ? `<div class="small">Tags: ${escapeHTML(b.tags)}</div>` : ""}
           ${b.notes ? `<div class="small">${escapeHTML(b.notes)}</div>` : ""}
+          <div class="small" style="margin-top:8px;">Closing odds (optional):</div>
         </td>
-        <td class="right mono">${Number(b.odds).toFixed(2)}</td>
+        <td class="right mono">
+          ${Number(b.odds).toFixed(2)}
+          <div class="small">CLV: ${(clv===null) ? "—" : (clv>0?"+":"") + clv.toFixed(2) + "%"}</div>
+        </td>
         <td class="right mono">${Number(b.stake).toFixed(2)}</td>
         <td></td>
         <td class="right mono" style="color:${pnl>0?'var(--green)':pnl<0?'var(--red)':'var(--muted)'}">
@@ -810,76 +2246,217 @@
         <td></td>
       `;
 
-      const tdRes = tr.children[4];
-      const pill = document.createElement("div");
-      pill.className = resPillClass(b.result);
-      pill.textContent = b.result || "pending";
-      tdRes.appendChild(pill);
-      tdRes.appendChild(resSel);
+      tr.children[1].appendChild(closeInput);
+      tr.children[4].appendChild(settleWrap);
 
-      tr.children[6].appendChild(delBtn);
+      const tdActions = tr.children[6];
+      const actionWrap = document.createElement("div");
+      actionWrap.style.display = "flex";
+      actionWrap.style.gap = "8px";
+      actionWrap.style.flexWrap = "wrap";
+      actionWrap.appendChild(editBtn);
+      actionWrap.appendChild(delBtn);
+      tdActions.appendChild(actionWrap);
+
+      els.betsTbody.appendChild(tr);
+    }
+
+    if(shown.length === 0){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="7" class="small">No bets match your filters/range.</td>`;
       els.betsTbody.appendChild(tr);
     }
   }
 
-  function escapeHTML(s){
-    return String(s).replace(/[&<>"']/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-    }[c]));
-  }
-
-  function setRange(range){
-    state.range = range;
-    for(const t of els.tabs){
-      t.classList.toggle("active", t.dataset.range === range);
-    }
-    save();
-    renderAll();
-  }
-
+  // ---------- render all ----------
   function renderAll(){
-    renderMetrics();
-    buildChart(state.range);
+    rebuildFilterOptions();
+
+    const filteredBets = getFilteredBets();
+    const stats = computeStats(filteredBets);
+
+    // KPI
+    els.kProfit.textContent = fmtMoney(stats.totalProfit);
+    els.kProfit.classList.remove("green","red");
+    if(stats.totalProfit > 0) els.kProfit.classList.add("green");
+    if(stats.totalProfit < 0) els.kProfit.classList.add("red");
+
+    els.kROI.textContent = fmtPct(stats.roi);
+    els.kROI.classList.remove("green","red");
+    if(stats.roi > 0) els.kROI.classList.add("green");
+    if(stats.roi < 0) els.kROI.classList.add("red");
+
+    els.kWR.textContent = fmtPct(stats.winRate);
+    els.kWR.classList.remove("green","red","amber");
+    if(stats.winRate >= 55) els.kWR.classList.add("green");
+    else if(stats.winRate <= 45) els.kWR.classList.add("red");
+    else els.kWR.classList.add("amber");
+
+    els.kDD.textContent = fmtMoney(stats.maxDD);
+    els.kBR.textContent = fmtMoney(stats.currentBR);
+
+    els.sTotalBets.textContent = String(stats.totalBets);
+    els.sSettledBets.textContent = String(stats.settledBets);
+    els.sStaked.textContent = fmtMoney(stats.totalStaked);
+    els.sWins.textContent = String(stats.wins);
+    els.sLosses.textContent = String(stats.losses);
+    els.sPushes.textContent = String(stats.pushes);
+    els.sAvgOdds.textContent = stats.avgOdds ? stats.avgOdds.toFixed(2) : "0.00";
+    els.sAvgStake.textContent = fmtMoney(stats.avgStake);
+    els.sVolDaily.textContent = fmtMoney(stats.volDaily);
+
+    // added metrics
+    els.sWinStreak.textContent = String(stats.bestWinStreak);
+    els.sLoseStreak.textContent = String(stats.bestLoseStreak);
+    els.sBestDay.textContent = stats.bestDay ? `${stats.bestDay.date} (${stats.bestDay.pnl>0?"+":""}${fmtMoney(stats.bestDay.pnl)})` : "—";
+    els.sWorstDay.textContent = stats.worstDay ? `${stats.worstDay.date} (${stats.worstDay.pnl>0?"+":""}${fmtMoney(stats.worstDay.pnl)})` : "—";
+
+    els.bkCurrent.textContent = fmtMoney(stats.currentBR);
+    els.bkPeak.textContent = fmtMoney(stats.peakBR);
+    els.bkGrowth.textContent = fmtPct(stats.growthPct);
+    els.uStaked.textContent = stats.unitSize > 0 ? stats.unitsStaked.toFixed(2) : "0.00";
+    els.uProfit.textContent = stats.unitSize > 0 ? stats.unitsProfit.toFixed(2) : "0.00";
+    els.uROI.textContent = stats.unitSize > 0 ? (stats.roiUnits.toFixed(2) + "u%") : "0.00u%";
+
+    const last = state.bets[0]?.createdAt || null;
+    els.lastUpdated.textContent = last ? `Updated: ${new Date(last).toLocaleString()}` : "No bets yet";
+
+    buildChart(filteredBets);
+    renderReports(filteredBets, stats);
+    renderBetsList(filteredBets);
+
     renderCalendar();
-    renderBetsList();
   }
 
-  // wire
-  els.btnAdd.addEventListener("click", (e) => { e.preventDefault(); addBet(); });
-  els.btnExport.addEventListener("click", (e) => { e.preventDefault(); exportJSON(); });
-  els.fileImport.addEventListener("change", (e) => {
-    const f = e.target.files && e.target.files[0];
-    if(f) importJSON(f);
-    e.target.value = "";
-  });
-  els.btnWipe.addEventListener("click", (e) => { e.preventDefault(); wipeAll(); });
+  // ---------- init ----------
+  function init(){
+    load();
 
-  for(const t of els.tabs){ t.addEventListener("click", () => setRange(t.dataset.range)); }
+    // range tabs
+    for(const t of els.tabs){
+      t.classList.toggle("active", t.dataset.range === state.range);
+      t.addEventListener("click", () => {
+        state.range = t.dataset.range;
+        for(const x of els.tabs) x.classList.toggle("active", x.dataset.range === state.range);
+        save();
+        renderAll();
+      });
+    }
 
-  els.btnPrev.addEventListener("click", () => {
-    calMonth -= 1;
-    if(calMonth < 0){ calMonth = 11; calYear -= 1; }
-    renderCalendar();
-  });
-  els.btnNext.addEventListener("click", () => {
-    calMonth += 1;
-    if(calMonth > 11){ calMonth = 0; calYear += 1; }
-    renderCalendar();
-  });
-  els.btnToday.addEventListener("click", () => {
-    const d = new Date();
-    calYear = d.getFullYear();
-    calMonth = d.getMonth();
-    renderCalendar();
-  });
+    // chart mode
+    els.chartMode.value = state.chartMode;
+    els.chartMode.addEventListener("change", () => {
+      state.chartMode = els.chartMode.value;
+      save();
+      renderAll();
+    });
 
-  // init
-  load();
-  clearForm();
-  const now = new Date();
-  calYear = now.getFullYear();
-  calMonth = now.getMonth();
-  setRange(state.range || "daily");
+    // filters
+    els.fltSport.addEventListener("change", () => { state.filters.sport = els.fltSport.value; save(); renderAll(); });
+    els.fltMarket.addEventListener("change", () => { state.filters.market = els.fltMarket.value; save(); renderAll(); });
+    els.fltResult.addEventListener("change", () => { state.filters.result = els.fltResult.value; save(); renderAll(); });
+    els.fltFrom.addEventListener("change", () => { state.filters.from = els.fltFrom.value; save(); renderAll(); });
+    els.fltTo.addEventListener("change", () => { state.filters.to = els.fltTo.value; save(); renderAll(); });
+
+    els.btnClearFilters.addEventListener("click", () => {
+      state.filters = { sport:"", market:"", result:"", from:"", to:"" };
+      save();
+      syncFiltersUI();
+      renderAll();
+    });
+
+    // settings
+    syncSettingsUI();
+    els.btnSaveSettings.addEventListener("click", (e) => {
+      e.preventDefault();
+      state.settings.startingBankroll = Number(els.setStartBR.value) || 0;
+      state.settings.unitValue = Number(els.setUnitValue.value) || 0;
+      state.settings.unitPct = Number(els.setUnitPct.value) || 0;
+      save();
+      syncSettingsUI();
+      renderAll();
+    });
+    els.unitModeSeg.addEventListener("click", (e) => {
+      const btn = e.target.closest(".segBtn");
+      if(!btn) return;
+      setUnitMode(btn.dataset.val);
+      save();
+      renderAll();
+    });
+
+    // add form
+    els.resultSeg.addEventListener("click", (e) => {
+      const btn = e.target.closest(".segBtn");
+      if(!btn) return;
+      setFormResult(btn.dataset.val);
+    });
+
+    els.btnAdd.addEventListener("click", (e) => { e.preventDefault(); addBet(); });
+    els.btnExportJSON.addEventListener("click", (e) => { e.preventDefault(); exportJSON(); });
+    els.btnExportCSV.addEventListener("click", (e) => { e.preventDefault(); exportCSV(); });
+    els.fileImport.addEventListener("change", (e) => {
+      const f = e.target.files && e.target.files[0];
+      if(f) importJSON(f);
+      e.target.value = "";
+    });
+    els.fileImportCSV.addEventListener("change", (e) => {
+      const f = e.target.files && e.target.files[0];
+      if(f) importCSV(f);
+      e.target.value = "";
+    });
+    els.btnWipe.addEventListener("click", (e) => { e.preventDefault(); wipeAll(); });
+
+    // modal
+    els.btnCloseModal.addEventListener("click", closeEditModal);
+    els.btnCancelEdit.addEventListener("click", closeEditModal);
+    els.btnSaveEdit.addEventListener("click", saveEdit);
+    els.modalBackdrop.addEventListener("click", (e) => {
+      if(e.target === els.modalBackdrop) closeEditModal();
+    });
+    els.editResultSeg.addEventListener("click", (e) => {
+      const btn = e.target.closest(".segBtn");
+      if(!btn) return;
+      setEditResult(btn.dataset.val);
+    });
+
+    // calendar nav
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth();
+
+    els.btnPrev.addEventListener("click", () => {
+      calMonth -= 1;
+      if(calMonth < 0){ calMonth = 11; calYear -= 1; }
+      renderCalendar();
+    });
+    els.btnNext.addEventListener("click", () => {
+      calMonth += 1;
+      if(calMonth > 11){ calMonth = 0; calYear += 1; }
+      renderCalendar();
+    });
+    els.btnToday.addEventListener("click", () => {
+      const d = new Date();
+      calYear = d.getFullYear();
+      calMonth = d.getMonth();
+      renderCalendar();
+    });
+
+    els.btnCloseDrawer.addEventListener("click", closeDayDrawer);
+
+    // defaults
+    els.fDate.value = todayISO();
+    clearForm();
+    syncFiltersUI();
+
+    renderAll();
+
+    if(state.ui.selectedDay){
+      els.dayDrawer.style.display = "block";
+      renderDayDrawer(state.ui.selectedDay);
+    }
+  }
+
+  init();
 })();
 </script>
 </body>
