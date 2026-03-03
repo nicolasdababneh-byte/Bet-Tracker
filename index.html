@@ -1,135 +1,1009 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>Bet Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>P&L Bet Tracker (Decimal Odds)</title>
+
+  <!-- Chart.js (for the P&L chart) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
   <style>
-    body { font-family: Arial; background:#f4f4f4; padding:20px; }
-    h1 { text-align:center; }
-    .container { max-width:900px; margin:auto; background:white; padding:20px; border-radius:8px; }
-    input, select, button { padding:8px; margin:5px 0; width:100%; }
-    table { width:100%; margin-top:20px; border-collapse: collapse; }
-    th, td { padding:10px; border-bottom:1px solid #ddd; text-align:center; }
-    th { background:#222; color:white; }
-    .win { color:green; font-weight:bold; }
-    .loss { color:red; font-weight:bold; }
+    :root{
+      --bg:#0b0f14;
+      --card:#111824;
+      --card2:#0f1722;
+      --text:#e6eef9;
+      --muted:#93a4bd;
+      --line:#1f2b3d;
+      --green:#15c67a;
+      --red:#ff4d4d;
+      --amber:#f7c948;
+      --btn:#182336;
+      --btn2:#0f1722;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 20% 0%, #15253a 0%, var(--bg) 50%) fixed;
+      color:var(--text);
+    }
+    .wrap{max-width:1100px;margin:18px auto;padding:0 14px 30px;}
+    .topbar{
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .title{
+      display:flex; flex-direction:column; gap:3px;
+    }
+    h1{margin:0;font-size:18px;letter-spacing:.2px}
+    .sub{color:var(--muted);font-size:12px}
+    .tabs{
+      display:flex; gap:8px; background:rgba(255,255,255,.04);
+      padding:6px;border:1px solid rgba(255,255,255,.06);
+      border-radius:999px;
+    }
+    .tab{
+      border:0; cursor:pointer; color:var(--muted);
+      background:transparent; padding:7px 12px; border-radius:999px;
+      font-size:12px;
+    }
+    .tab.active{background:#0f1b2b;color:var(--text); border:1px solid rgba(255,255,255,.08)}
+    .grid{
+      display:grid; gap:12px;
+      grid-template-columns: 1.15fr .85fr;
+    }
+    @media(max-width: 980px){
+      .grid{grid-template-columns:1fr}
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .cardHead{
+      padding:12px 14px;
+      display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      background: rgba(0,0,0,.12);
+    }
+    .cardHead .label{font-size:12px;color:var(--muted)}
+    .metricRow{
+      display:flex; gap:10px; flex-wrap:wrap; padding:12px 14px;
+    }
+    .metric{
+      flex:1; min-width:170px;
+      background: rgba(0,0,0,.16);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:14px;
+      padding:10px 12px;
+    }
+    .metric .k{font-size:11px;color:var(--muted)}
+    .metric .v{font-size:18px;font-weight:700;margin-top:3px}
+    .metric .v.green{color:var(--green)}
+    .metric .v.red{color:var(--red)}
+    .chartWrap{padding:12px 14px}
+    canvas{width:100%!important;height:260px!important}
+
+    /* Calendar */
+    .calWrap{padding:12px 14px}
+    .calTop{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-bottom:10px;
+    }
+    .calTitle{font-weight:700}
+    .calNav{display:flex; gap:8px}
+    .btn{
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:12px;
+    }
+    .btn:active{transform: translateY(1px)}
+    .calGrid{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap:8px;
+    }
+    .dow{
+      color:var(--muted);
+      font-size:11px;
+      text-align:center;
+      padding:4px 0;
+    }
+    .day{
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.06);
+      background: rgba(0,0,0,.18);
+      min-height: 72px;
+      padding:8px 8px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .day.off{
+      opacity:.35;
+      background: rgba(0,0,0,.10);
+    }
+    .dayNum{
+      display:flex; justify-content:space-between; align-items:center;
+      font-size:12px; color:var(--muted);
+    }
+    .pnl{
+      font-weight:800;
+      font-size:13px;
+      color: var(--text);
+    }
+    .pnl.green{color:var(--green)}
+    .pnl.red{color:var(--red)}
+    .pnl.zero{color:var(--muted)}
+    .mini{
+      font-size:11px; color:var(--muted);
+    }
+
+    /* Heat strength overlay */
+    .heat{
+      position:relative;
+      overflow:hidden;
+    }
+    .heat::before{
+      content:"";
+      position:absolute; inset:0;
+      background: var(--heatColor, transparent);
+      opacity: var(--heatAlpha, 0);
+      pointer-events:none;
+    }
+
+    /* Form */
+    .form{padding:12px 14px}
+    .formGrid{
+      display:grid; grid-template-columns: repeat(12, 1fr); gap:10px;
+    }
+    .field{grid-column: span 3}
+    .field.w4{grid-column: span 4}
+    .field.w6{grid-column: span 6}
+    .field.w12{grid-column: span 12}
+    label{display:block; font-size:11px; color:var(--muted); margin:0 0 4px 2px}
+    input, select{
+      width:100%; padding:9px 10px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+      color:var(--text);
+      outline:none;
+    }
+    input::placeholder{color:#7f90aa}
+    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+    .btnPrimary{
+      background: #0f1b2b;
+      border-color: rgba(255,255,255,.12);
+    }
+    .btnDanger{
+      background: rgba(255,77,77,.12);
+      border-color: rgba(255,77,77,.25);
+      color: #ffd2d2;
+    }
+
+    /* Bets list */
+    .list{padding:0 14px 14px}
+    table{width:100%; border-collapse:collapse; overflow:hidden}
+    th,td{padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.06); font-size:12px; text-align:left}
+    th{color:var(--muted); font-weight:600}
+    .right{text-align:right}
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      font-size:12px;
+    }
+    .pill.win{border-color: rgba(21,198,122,.35); background: rgba(21,198,122,.12); color:#bff2db}
+    .pill.loss{border-color: rgba(255,77,77,.35); background: rgba(255,77,77,.12); color:#ffd2d2}
+    .pill.push{border-color: rgba(147,164,189,.25); background: rgba(147,164,189,.10); color:#d6e4ff}
+    .pill.pending{border-color: rgba(247,201,72,.30); background: rgba(247,201,72,.12); color:#fff0c2}
+    .small{font-size:11px;color:var(--muted)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
   </style>
 </head>
+
 <body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <h1>P&L Tracker (Decimal Odds)</h1>
+        <div class="sub">Calendar heatmap + cumulative P&L chart. Data saved in your browser.</div>
+      </div>
 
-<div class="container">
-  <h1>Bet Tracker (Decimal Odds)</h1>
+      <div class="tabs" role="tablist" aria-label="Range">
+        <button class="tab active" data-range="daily">Daily</button>
+        <button class="tab" data-range="monthly">Monthly</button>
+        <button class="tab" data-range="all">All Time</button>
+      </div>
+    </div>
 
-  <input type="date" id="date">
-  <input type="text" id="event" placeholder="Event">
-  <input type="number" id="odds" placeholder="Decimal Odds (e.g. 1.91)" step="0.01">
-  <input type="number" id="stake" placeholder="Stake" step="0.01">
+    <div class="grid">
+      <!-- LEFT: Chart + summary -->
+      <div class="card">
+        <div class="cardHead">
+          <div>
+            <div class="label">P&L Chart</div>
+            <div class="small" id="chartSub"></div>
+          </div>
+          <div class="pill mono" id="lastUpdated">—</div>
+        </div>
 
-  <select id="result">
-    <option value="pending">Pending</option>
-    <option value="win">Win</option>
-    <option value="loss">Loss</option>
-    <option value="push">Push</option>
-  </select>
+        <div class="metricRow">
+          <div class="metric">
+            <div class="k">Total P&L (settled)</div>
+            <div class="v" id="mTotal">0.00</div>
+          </div>
+          <div class="metric">
+            <div class="k">ROI (settled)</div>
+            <div class="v" id="mROI">0.00%</div>
+          </div>
+          <div class="metric">
+            <div class="k">W–L–P</div>
+            <div class="v" id="mWLP">0–0–0</div>
+          </div>
+        </div>
 
-  <button onclick="addBet()">Add Bet</button>
+        <div class="chartWrap">
+          <canvas id="pnlChart"></canvas>
+        </div>
 
-  <h3>Summary</h3>
-  <p>Total Staked: $<span id="totalStaked">0</span></p>
-  <p>Total Profit: $<span id="totalProfit">0</span></p>
-  <p>ROI: <span id="roi">0</span>%</p>
+        <div class="cardHead">
+          <div>
+            <div class="label">Add Bet</div>
+            <div class="small">Profit rules: win = (odds − 1)×stake, loss = −stake, push/pending = 0</div>
+          </div>
+        </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Event</th>
-        <th>Odds</th>
-        <th>Stake</th>
-        <th>Result</th>
-        <th>Profit</th>
-      </tr>
-    </thead>
-    <tbody id="betTable"></tbody>
-  </table>
-</div>
+        <div class="form">
+          <div class="formGrid">
+            <div class="field">
+              <label>Date</label>
+              <input id="fDate" type="date" />
+            </div>
+            <div class="field w4">
+              <label>Event</label>
+              <input id="fEvent" placeholder="Portland vs Wolves" />
+            </div>
+            <div class="field w4">
+              <label>Pick</label>
+              <input id="fPick" placeholder="Ant 20+ points" />
+            </div>
+            <div class="field">
+              <label>Odds (decimal)</label>
+              <input id="fOdds" type="number" step="0.01" min="1.01" placeholder="1.91" />
+            </div>
+            <div class="field">
+              <label>Stake</label>
+              <input id="fStake" type="number" step="0.01" min="0.01" placeholder="100" />
+            </div>
+            <div class="field w4">
+              <label>Result</label>
+              <select id="fResult">
+                <option value="pending">pending</option>
+                <option value="win">win</option>
+                <option value="loss">loss</option>
+                <option value="push">push</option>
+              </select>
+            </div>
+            <div class="field w12">
+              <label>Notes (optional)</label>
+              <input id="fNotes" placeholder="Optional" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btnPrimary" id="btnAdd">Add bet</button>
+            <button class="btn" id="btnExport">Export JSON</button>
+            <label class="btn" style="cursor:pointer">
+              Import JSON
+              <input id="fileImport" type="file" accept="application/json" style="display:none" />
+            </label>
+            <button class="btn btnDanger" id="btnWipe">Wipe all</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Calendar + list -->
+      <div class="card">
+        <div class="cardHead">
+          <div>
+            <div class="label">P&L Calendar</div>
+            <div class="small">Green = profit day, Red = loss day</div>
+          </div>
+          <div class="pill mono" id="monthPnl">Month P&L: 0.00</div>
+        </div>
+
+        <div class="calWrap">
+          <div class="calTop">
+            <div class="calTitle" id="calTitle">—</div>
+            <div class="calNav">
+              <button class="btn" id="btnPrev">◀</button>
+              <button class="btn" id="btnToday">Today</button>
+              <button class="btn" id="btnNext">▶</button>
+            </div>
+          </div>
+
+          <div class="calGrid" id="dowRow"></div>
+          <div class="calGrid" id="calGrid"></div>
+        </div>
+
+        <div class="cardHead">
+          <div>
+            <div class="label">Recent Bets</div>
+            <div class="small">Change result to update P&L immediately</div>
+          </div>
+        </div>
+
+        <div class="list" style="overflow:auto; max-height: 420px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Event / Pick</th>
+                <th class="right">Odds</th>
+                <th class="right">Stake</th>
+                <th>Result</th>
+                <th class="right">P&L</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="betsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <script>
-let bets = JSON.parse(localStorage.getItem("bets")) || [];
+(() => {
+  const STORAGE_KEY = "pnl_tracker_decimal_v2";
 
-function save() {
-  localStorage.setItem("bets", JSON.stringify(bets));
-}
+  const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const $ = (id) => document.getElementById(id);
 
-function calculateProfit(odds, stake, result) {
-  if (result === "win") return (odds - 1) * stake;
-  if (result === "loss") return -stake;
-  return 0;
-}
+  const els = {
+    tabs: Array.from(document.querySelectorAll(".tab")),
+    chartSub: $("chartSub"),
+    lastUpdated: $("lastUpdated"),
+    mTotal: $("mTotal"),
+    mROI: $("mROI"),
+    mWLP: $("mWLP"),
 
-function updateSummary() {
-  let totalStaked = 0;
-  let totalProfit = 0;
+    fDate: $("fDate"),
+    fEvent: $("fEvent"),
+    fPick: $("fPick"),
+    fOdds: $("fOdds"),
+    fStake: $("fStake"),
+    fResult: $("fResult"),
+    fNotes: $("fNotes"),
 
-  bets.forEach(b => {
-    if (b.result !== "pending") {
-      totalStaked += b.stake;
-      totalProfit += calculateProfit(b.odds, b.stake, b.result);
-    }
-  });
+    btnAdd: $("btnAdd"),
+    btnExport: $("btnExport"),
+    fileImport: $("fileImport"),
+    btnWipe: $("btnWipe"),
 
-  document.getElementById("totalStaked").innerText = totalStaked.toFixed(2);
-  document.getElementById("totalProfit").innerText = totalProfit.toFixed(2);
+    calTitle: $("calTitle"),
+    dowRow: $("dowRow"),
+    calGrid: $("calGrid"),
+    btnPrev: $("btnPrev"),
+    btnNext: $("btnNext"),
+    btnToday: $("btnToday"),
+    monthPnl: $("monthPnl"),
 
-  let roi = totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0;
-  document.getElementById("roi").innerText = roi.toFixed(2);
-}
-
-function render() {
-  let table = document.getElementById("betTable");
-  table.innerHTML = "";
-
-  bets.forEach(b => {
-    let profit = calculateProfit(b.odds, b.stake, b.result);
-
-    table.innerHTML += `
-      <tr>
-        <td>${b.date}</td>
-        <td>${b.event}</td>
-        <td>${b.odds}</td>
-        <td>$${b.stake}</td>
-        <td>${b.result}</td>
-        <td class="${b.result === 'win' ? 'win' : b.result === 'loss' ? 'loss' : ''}">
-          $${profit.toFixed(2)}
-        </td>
-      </tr>
-    `;
-  });
-
-  updateSummary();
-}
-
-function addBet() {
-  let bet = {
-    date: document.getElementById("date").value,
-    event: document.getElementById("event").value,
-    odds: parseFloat(document.getElementById("odds").value),
-    stake: parseFloat(document.getElementById("stake").value),
-    result: document.getElementById("result").value
+    betsTbody: $("betsTbody"),
+    chartCanvas: $("pnlChart"),
   };
 
-  if (!bet.date || !bet.event || !bet.odds || !bet.stake) {
-    alert("Fill all fields");
-    return;
+  let state = { nextId: 1, bets: [], range: "daily" };
+
+  // calendar currently shown
+  let calYear, calMonth; // month is 0-11
+
+  // chart
+  let chart;
+
+  function todayISO(){
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60 * 1000);
+    return local.toISOString().slice(0,10);
   }
 
-  bets.push(bet);
-  save();
-  render();
-}
+  function round2(x){ return Math.round((x + Number.EPSILON) * 100) / 100; }
 
-render();
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === "object"){
+        state.nextId = Number(parsed.nextId) || 1;
+        state.bets = Array.isArray(parsed.bets) ? parsed.bets : [];
+        state.range = parsed.range || "daily";
+      }
+    }catch(e){
+      console.warn("load failed", e);
+    }
+  }
+
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function profitFor(b){
+    const r = (b.result || "pending").toLowerCase();
+    const odds = Number(b.odds), stake = Number(b.stake);
+    if(!Number.isFinite(odds) || !Number.isFinite(stake)) return 0;
+    if(r === "win") return round2((odds - 1) * stake);
+    if(r === "loss") return round2(-stake);
+    return 0;
+  }
+
+  function isSettled(b){
+    const r = (b.result || "").toLowerCase();
+    return r === "win" || r === "loss" || r === "push";
+  }
+
+  function fmtMoney(x){
+    const n = round2(Number(x) || 0);
+    const s = n.toFixed(2);
+    return s;
+  }
+
+  function setMetric(el, value){
+    el.textContent = value;
+    el.classList.remove("green","red");
+    const num = Number(value.replace("%",""));
+    if(!Number.isFinite(num)) return;
+    if(num > 0) el.classList.add("green");
+    if(num < 0) el.classList.add("red");
+  }
+
+  function setMetricMoney(el, num){
+    el.textContent = fmtMoney(num);
+    el.classList.remove("green","red");
+    if(num > 0) el.classList.add("green");
+    if(num < 0) el.classList.add("red");
+  }
+
+  function addBet(){
+    const date = els.fDate.value || todayISO();
+    const event = (els.fEvent.value || "").trim();
+    const pick  = (els.fPick.value || "").trim();
+    const odds  = Number(els.fOdds.value);
+    const stake = Number(els.fStake.value);
+    const result = els.fResult.value;
+    const notes = (els.fNotes.value || "").trim();
+
+    if(!event) return alert("Event is required.");
+    if(!pick) return alert("Pick is required.");
+    if(!Number.isFinite(odds) || odds <= 1.0) return alert("Decimal odds must be > 1.00 (example: 1.91).");
+    if(!Number.isFinite(stake) || stake <= 0) return alert("Stake must be > 0.");
+
+    const bet = {
+      id: state.nextId++,
+      date,
+      event,
+      pick,
+      odds,
+      stake,
+      result,
+      notes,
+      createdAt: new Date().toISOString(),
+    };
+
+    state.bets.unshift(bet);
+    save();
+    renderAll();
+    clearForm();
+  }
+
+  function clearForm(){
+    els.fDate.value = todayISO();
+    els.fEvent.value = "";
+    els.fPick.value = "";
+    els.fOdds.value = "";
+    els.fStake.value = "";
+    els.fResult.value = "pending";
+    els.fNotes.value = "";
+  }
+
+  function wipeAll(){
+    if(!confirm("Wipe all bets? This cannot be undone.")) return;
+    state = { nextId: 1, bets: [], range: state.range };
+    save();
+    renderAll();
+  }
+
+  function exportJSON(){
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "pnl-tracker-export.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importJSON(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const parsed = JSON.parse(String(reader.result));
+        if(!parsed || typeof parsed !== "object") throw new Error("Invalid JSON");
+        const bets = Array.isArray(parsed.bets) ? parsed.bets : [];
+        const nextId = Number(parsed.nextId) || 1;
+
+        state = {
+          nextId,
+          range: parsed.range || state.range || "daily",
+          bets: bets.map(b => ({
+            id: Number(b.id),
+            date: String(b.date || todayISO()).slice(0,10),
+            event: String(b.event || ""),
+            pick: String(b.pick || ""),
+            odds: Number(b.odds),
+            stake: Number(b.stake),
+            result: String(b.result || "pending").toLowerCase(),
+            notes: String(b.notes || ""),
+            createdAt: String(b.createdAt || new Date().toISOString())
+          })).filter(b => Number.isFinite(b.id) && b.id > 0),
+        };
+
+        const maxId = state.bets.reduce((m,b)=>Math.max(m,b.id),0);
+        if(!Number.isFinite(state.nextId) || state.nextId <= maxId) state.nextId = maxId + 1;
+
+        save();
+        renderAll();
+      }catch(e){
+        alert("Import failed: " + e.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------- Aggregation ----------
+  function dayKey(dateStr){ return dateStr; } // YYYY-MM-DD
+  function toDate(dateStr){
+    const [y,m,d] = dateStr.split("-").map(Number);
+    return new Date(y, m-1, d);
+  }
+
+  function inRange(dateStr, range){
+    const dt = toDate(dateStr);
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if(range === "all") return true;
+
+    if(range === "daily"){
+      // last 30 days including today
+      const start = new Date(startOfToday);
+      start.setDate(start.getDate() - 29);
+      return dt >= start && dt <= startOfToday;
+    }
+
+    if(range === "monthly"){
+      // current month
+      return dt.getFullYear() === startOfToday.getFullYear() && dt.getMonth() === startOfToday.getMonth();
+    }
+
+    return true;
+  }
+
+  function dailyPnlMap(range){
+    // map day -> {pnl, count, stakeSettled}
+    const map = new Map();
+    for(const b of state.bets){
+      if(!inRange(b.date, range)) continue;
+      const key = dayKey(b.date);
+      if(!map.has(key)) map.set(key, { pnl:0, count:0, stakeSettled:0 });
+      const cell = map.get(key);
+      if(isSettled(b)){
+        cell.pnl += profitFor(b);
+        cell.stakeSettled += Number(b.stake) || 0;
+      }
+      cell.count += 1;
+    }
+    // round pnl
+    for(const [k,v] of map.entries()){
+      v.pnl = round2(v.pnl);
+      v.stakeSettled = round2(v.stakeSettled);
+    }
+    return map;
+  }
+
+  function getSummary(){
+    const settled = state.bets.filter(isSettled);
+    let staked = 0, pnl = 0, w=0, l=0, p=0;
+    for(const b of settled){
+      staked += Number(b.stake) || 0;
+      const pr = profitFor(b);
+      pnl += pr;
+      if(b.result === "win") w++;
+      else if(b.result === "loss") l++;
+      else if(b.result === "push") p++;
+    }
+    staked = round2(staked);
+    pnl = round2(pnl);
+    const roi = staked > 0 ? round2((pnl / staked) * 100) : 0;
+
+    return { staked, pnl, roi, w, l, p };
+  }
+
+  // ---------- Chart ----------
+  function buildChart(range){
+    const map = dailyPnlMap(range);
+
+    // build a sorted list of days based on range selection
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let start, end;
+
+    if(range === "daily"){
+      start = new Date(today); start.setDate(start.getDate()-29);
+      end = new Date(today);
+    } else if(range === "monthly"){
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end = new Date(today.getFullYear(), today.getMonth()+1, 0);
+    } else {
+      // all time: from oldest bet date to today (or last bet date)
+      const dates = state.bets.map(b => toDate(b.date)).sort((a,b)=>a-b);
+      start = dates[0] ? new Date(dates[0].getFullYear(), dates[0].getMonth(), dates[0].getDate()) : new Date(today);
+      const last = dates[dates.length-1] || today;
+      end = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    }
+
+    // create day array
+    const labels = [];
+    const values = []; // cumulative pnl
+    let cum = 0;
+
+    const cur = new Date(start);
+    while(cur <= end){
+      const key = cur.toISOString().slice(0,10);
+      const v = map.get(key);
+      const daily = v ? v.pnl : 0;
+      cum = round2(cum + daily);
+      labels.push(key);
+      values.push(cum);
+      cur.setDate(cur.getDate()+1);
+    }
+
+    const prettyRange =
+      range === "daily" ? "Last 30 days" :
+      range === "monthly" ? "This month" : "All time";
+
+    els.chartSub.textContent = `Cumulative P&L • ${prettyRange}`;
+
+    const ctx = els.chartCanvas.getContext("2d");
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Cumulative P&L",
+          data: values,
+          tension: 0.28,
+          pointRadius: 0,
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (c) => ` ${fmtMoney(c.raw)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: "rgba(147,164,189,.85)",
+              maxTicksLimit: 7,
+              callback: function(val){
+                // show MM-DD
+                const s = this.getLabelForValue(val);
+                return s.slice(5);
+              }
+            },
+            grid: { color: "rgba(31,43,61,.35)" }
+          },
+          y: {
+            ticks: { color: "rgba(147,164,189,.85)" },
+            grid: { color: "rgba(31,43,61,.35)" }
+          }
+        }
+      }
+    });
+  }
+
+  // ---------- Calendar ----------
+  function monthName(y,m){
+    return new Date(y,m,1).toLocaleString(undefined,{month:"long", year:"numeric"});
+  }
+  function startOfWeekMonday(d){
+    const day = d.getDay(); // 0 Sun ... 6 Sat
+    const diff = (day === 0 ? 6 : day - 1); // Monday=0
+    const res = new Date(d);
+    res.setDate(d.getDate() - diff);
+    res.setHours(0,0,0,0);
+    return res;
+  }
+
+  function heatForPnl(pnl, maxAbs){
+    if(maxAbs <= 0) return { color:"transparent", alpha:0 };
+
+    const abs = Math.min(Math.abs(pnl), maxAbs);
+    // normalize 0..1
+    const t = abs / maxAbs;
+
+    // stronger alpha for bigger pnl, keep subtle
+    const alpha = 0.10 + 0.40 * t;
+
+    if(pnl > 0) return { color: "rgba(21,198,122,1)", alpha };
+    if(pnl < 0) return { color: "rgba(255,77,77,1)", alpha };
+    return { color:"transparent", alpha:0 };
+  }
+
+  function renderCalendar(){
+    // Header
+    els.calTitle.textContent = monthName(calYear, calMonth);
+
+    // DOW row
+    els.dowRow.innerHTML = "";
+    for(const d of DOW){
+      const el = document.createElement("div");
+      el.className = "dow";
+      el.textContent = d;
+      els.dowRow.appendChild(el);
+    }
+
+    // Gather month pnls (all bets, not filtered by chart range)
+    const dailyMapAll = dailyPnlMap("all"); // for calendar we want all
+    const monthStart = new Date(calYear, calMonth, 1);
+    const monthEnd = new Date(calYear, calMonth + 1, 0);
+
+    // month pnl
+    let monthP = 0;
+    for(const [k,v] of dailyMapAll.entries()){
+      const dt = toDate(k);
+      if(dt >= monthStart && dt <= monthEnd) monthP += v.pnl;
+    }
+    monthP = round2(monthP);
+    els.monthPnl.textContent = `Month P&L: ${fmtMoney(monthP)}`;
+    els.monthPnl.classList.remove("win","loss");
+    // (simple coloring by text)
+    if(monthP > 0) els.monthPnl.style.borderColor = "rgba(21,198,122,.35)";
+    else if(monthP < 0) els.monthPnl.style.borderColor = "rgba(255,77,77,.35)";
+    else els.monthPnl.style.borderColor = "rgba(255,255,255,.10)";
+
+    // Build calendar grid: start from Monday of week containing 1st of month
+    const gridStart = startOfWeekMonday(monthStart);
+    const gridEnd = new Date(monthEnd);
+    // extend to Sunday end
+    const endDay = gridEnd.getDay();
+    const add = endDay === 0 ? 0 : (7 - endDay);
+    gridEnd.setDate(gridEnd.getDate() + add);
+    gridEnd.setHours(0,0,0,0);
+
+    // compute max abs pnl in visible range to scale heat
+    let maxAbs = 0;
+    const tmp = [];
+    for(let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate()+1)){
+      const key = d.toISOString().slice(0,10);
+      const pnl = (dailyMapAll.get(key)?.pnl) || 0;
+      maxAbs = Math.max(maxAbs, Math.abs(pnl));
+      tmp.push({ key, date: new Date(d), pnl, count: (dailyMapAll.get(key)?.count)||0 });
+    }
+
+    els.calGrid.innerHTML = "";
+    const todayKey = todayISO();
+
+    for(const item of tmp){
+      const isInMonth = item.date.getMonth() === calMonth;
+      const day = document.createElement("div");
+      day.className = "day heat" + (isInMonth ? "" : " off");
+      const num = item.date.getDate();
+
+      const heat = heatForPnl(item.pnl, maxAbs);
+      day.style.setProperty("--heatColor", heat.color);
+      day.style.setProperty("--heatAlpha", String(heat.alpha));
+
+      const pnlClass = item.pnl > 0 ? "green" : item.pnl < 0 ? "red" : "zero";
+
+      day.innerHTML = `
+        <div class="dayNum">
+          <span class="${item.key === todayKey ? "mono" : ""}">${num}</span>
+          <span class="mini">${item.count ? item.count + " bets" : ""}</span>
+        </div>
+        <div class="pnl ${pnlClass}">${item.pnl === 0 ? "—" : (item.pnl > 0 ? "+" : "") + fmtMoney(item.pnl)}</div>
+        <div class="mini mono">${item.key}</div>
+      `;
+
+      els.calGrid.appendChild(day);
+    }
+  }
+
+  // ---------- Bets list ----------
+  function pillClass(result){
+    const r = (result || "pending").toLowerCase();
+    if(r === "win") return "pill win";
+    if(r === "loss") return "pill loss";
+    if(r === "push") return "pill push";
+    return "pill pending";
+  }
+
+  function renderBetsList(){
+    els.betsTbody.innerHTML = "";
+
+    const shown = state.bets.slice(0, 40); // recent 40
+
+    for(const b of shown){
+      const tr = document.createElement("tr");
+      const pnl = profitFor(b);
+
+      const resSel = document.createElement("select");
+      resSel.innerHTML = `
+        <option value="pending">pending</option>
+        <option value="win">win</option>
+        <option value="loss">loss</option>
+        <option value="push">push</option>
+      `;
+      resSel.value = (b.result || "pending").toLowerCase();
+      resSel.style.padding = "7px 8px";
+      resSel.style.borderRadius = "10px";
+      resSel.style.background = "rgba(0,0,0,.16)";
+      resSel.style.border = "1px solid rgba(255,255,255,.10)";
+      resSel.style.color = "var(--text)";
+
+      resSel.onchange = () => {
+        b.result = resSel.value;
+        save();
+        renderAll();
+      };
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn btnDanger";
+      delBtn.textContent = "Delete";
+      delBtn.onclick = () => {
+        state.bets = state.bets.filter(x => x.id !== b.id);
+        save();
+        renderAll();
+      };
+
+      tr.innerHTML = `
+        <td class="mono">${escapeHTML(b.date)}</td>
+        <td>
+          <div><strong>${escapeHTML(b.event)}</strong></div>
+          <div class="small">${escapeHTML(b.pick)}</div>
+          ${b.notes ? `<div class="small">${escapeHTML(b.notes)}</div>` : ""}
+        </td>
+        <td class="right mono">${Number(b.odds).toFixed(2)}</td>
+        <td class="right mono">${Number(b.stake).toFixed(2)}</td>
+        <td></td>
+        <td class="right mono" style="color:${pnl>0?'var(--green)':pnl<0?'var(--red)':'var(--muted)'}">
+          ${pnl===0 ? "0.00" : (pnl>0?"+":"") + fmtMoney(pnl)}
+        </td>
+        <td></td>
+      `;
+
+      const tdRes = tr.children[4];
+      const pill = document.createElement("span");
+      pill.className = pillClass(b.result);
+      pill.textContent = b.result || "pending";
+      tdRes.appendChild(pill);
+      tdRes.appendChild(document.createElement("div")).appendChild(resSel);
+
+      tr.children[6].appendChild(delBtn);
+
+      els.betsTbody.appendChild(tr);
+    }
+  }
+
+  function escapeHTML(s){
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+
+  // ---------- Metrics ----------
+  function renderMetrics(){
+    const sum = getSummary();
+    setMetricMoney(els.mTotal, sum.pnl);
+    els.mROI.textContent = `${fmtMoney(sum.roi)}%`;
+    els.mROI.classList.remove("green","red");
+    if(sum.roi > 0) els.mROI.classList.add("green");
+    if(sum.roi < 0) els.mROI.classList.add("red");
+    els.mWLP.textContent = `${sum.w}–${sum.l}–${sum.p}`;
+
+    const last = state.bets[0]?.createdAt || null;
+    els.lastUpdated.textContent = last ? `Updated: ${new Date(last).toLocaleString()}` : "No bets yet";
+  }
+
+  // ---------- Range tabs ----------
+  function setRange(range){
+    state.range = range;
+    for(const t of els.tabs){
+      t.classList.toggle("active", t.dataset.range === range);
+    }
+    save();
+    renderAll();
+  }
+
+  // ---------- Render all ----------
+  function renderAll(){
+    renderMetrics();
+    buildChart(state.range);
+    renderCalendar();
+    renderBetsList();
+  }
+
+  // ---------- Wire up ----------
+  els.btnAdd.addEventListener("click", (e) => { e.preventDefault(); addBet(); });
+  els.btnExport.addEventListener("click", (e) => { e.preventDefault(); exportJSON(); });
+  els.fileImport.addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if(f) importJSON(f);
+    e.target.value = "";
+  });
+  els.btnWipe.addEventListener("click", (e) => { e.preventDefault(); wipeAll(); });
+
+  for(const t of els.tabs){
+    t.addEventListener("click", () => setRange(t.dataset.range));
+  }
+
+  els.btnPrev.addEventListener("click", () => {
+    calMonth -= 1;
+    if(calMonth < 0){ calMonth = 11; calYear -= 1; }
+    renderCalendar();
+  });
+
+  els.btnNext.addEventListener("click", () => {
+    calMonth += 1;
+    if(calMonth > 11){ calMonth = 0; calYear += 1; }
+    renderCalendar();
+  });
+
+  els.btnToday.addEventListener("click", () => {
+    const d = new Date();
+    calYear = d.getFullYear();
+    calMonth = d.getMonth();
+    renderCalendar();
+  });
+
+  // ---------- Init ----------
+  load();
+  clearForm();
+
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+
+  // if range missing
+  setRange(state.range || "daily");
+})();
 </script>
-
 </body>
 </html>
