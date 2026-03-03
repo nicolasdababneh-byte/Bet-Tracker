@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bet Tracker (Decimal Odds)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 10px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
+    label { display:block; font-size: 12px; color:#444; margin-bottom:4px; }
+    input, select, textarea, button {
+      width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px; font: inherit;
+      box-sizing: border-box;
+    }
+    textarea { resize: vertical; min-height: 38px; }
+    button { cursor: pointer; }
+    .btnrow { display:flex; gap:10px; flex-wrap: wrap; }
+    .btn { padding: 10px 12px; border-radius: 10px; border:1px solid #ccc; background:#f7f7f7; }
+    .btn.primary { background:#111; color:#fff; border-color:#111; }
+    .btn.danger { background:#b00020; color:#fff; border-color:#b00020; }
+    .muted { color:#666; font-size: 12px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border-bottom:1px solid #eee; padding:10px 8px; text-align:left; vertical-align: top; }
+    th { font-size: 12px; color:#444; }
+    .right { text-align:right; }
+    .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border:1px solid #ddd; }
+    .pill.win { background:#eaffea; border-color:#bfe5bf; }
+    .pill.loss { background:#ffeaea; border-color:#e5bfbf; }
+    .pill.push { background:#f3f3f3; border-color:#ddd; }
+    .pill.pending { background:#fff7e6; border-color:#f0d9a8; }
+    .row { display:flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .small { font-size: 12px; }
+    .nowrap { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Bet Tracker (Decimal Odds)</h1>
+    <div class="muted">Saves automatically in your browser (localStorage). Decimal odds only.</div>
+
+    <div class="grid" style="margin-top:12px;">
+      <div class="card" style="grid-column: span 12;">
+        <div class="grid">
+          <div style="grid-column: span 2;">
+            <label>Date</label>
+            <input id="date" type="date" />
+          </div>
+          <div style="grid-column: span 2;">
+            <label>Sport</label>
+            <input id="sport" placeholder="NBA" />
+          </div>
+          <div style="grid-column: span 3;">
+            <label>Event</label>
+            <input id="event" placeholder="Portland vs Wolves" />
+          </div>
+          <div style="grid-column: span 2;">
+            <label>Market</label>
+            <input id="market" placeholder="Player Points / ML / O-U" />
+          </div>
+          <div style="grid-column: span 3;">
+            <label>Pick</label>
+            <input id="pick" placeholder="Ant 20+ points" />
+          </div>
+
+          <div style="grid-column: span 2;">
+            <label>Odds (decimal)</label>
+            <input id="odds" type="number" step="0.01" min="1.01" placeholder="1.91" />
+          </div>
+          <div style="grid-column: span 2;">
+            <label>Stake</label>
+            <input id="stake" type="number" step="0.01" min="0.01" placeholder="100" />
+          </div>
+          <div style="grid-column: span 2;">
+            <label>Result</label>
+            <select id="result">
+              <option value="pending">pending</option>
+              <option value="win">win</option>
+              <option value="loss">loss</option>
+              <option value="push">push</option>
+            </select>
+          </div>
+          <div style="grid-column: span 6;">
+            <label>Notes</label>
+            <input id="notes" placeholder="Optional" />
+          </div>
+
+          <div style="grid-column: span 12;" class="btnrow">
+            <button class="btn primary" id="addBtn">Add bet</button>
+            <button class="btn" id="clearBtn" type="button">Clear form</button>
+            <button class="btn" id="exportBtn" type="button">Export JSON</button>
+            <label class="btn" style="display:inline-flex; align-items:center; gap:8px; width:auto;">
+              Import JSON
+              <input id="importFile" type="file" accept="application/json" style="display:none;" />
+            </label>
+            <button class="btn danger" id="wipeBtn" type="button">Wipe all</button>
+          </div>
+          <div style="grid-column: span 12;" class="muted">
+            Profit rules: <span class="mono">(win) (odds − 1) × stake</span>, <span class="mono">(loss) −stake</span>, <span class="mono">(push/pending) 0</span>.
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="grid-column: span 12;">
+        <div class="row">
+          <div class="card" style="padding:10px; border-radius:12px;">
+            <div class="small muted">Bets</div>
+            <div class="mono" id="sumBets">0</div>
+          </div>
+          <div class="card" style="padding:10px; border-radius:12px;">
+            <div class="small muted">W-L-P</div>
+            <div class="mono" id="sumWLP">0-0-0</div>
+          </div>
+          <div class="card" style="padding:10px; border-radius:12px;">
+            <div class="small muted">Staked (settled)</div>
+            <div class="mono" id="sumStaked">0.00</div>
+          </div>
+          <div class="card" style="padding:10px; border-radius:12px;">
+            <div class="small muted">Profit (settled)</div>
+            <div class="mono" id="sumProfit">0.00</div>
+          </div>
+          <div class="card" style="padding:10px; border-radius:12px;">
+            <div class="small muted">ROI (settled)</div>
+            <div class="mono" id="sumROI">0.00%</div>
+          </div>
+
+          <div style="margin-left:auto; min-width: 260px;">
+            <label>Filter</label>
+            <select id="filter">
+              <option value="all">all</option>
+              <option value="settled">settled</option>
+              <option value="pending">pending</option>
+            </select>
+          </div>
+          <div style="min-width: 260px;">
+            <label>Search</label>
+            <input id="search" placeholder="type to search (event, pick, sport...)" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px; overflow:auto;">
+          <table id="table">
+            <thead>
+              <tr>
+                <th class="nowrap">ID</th>
+                <th class="nowrap">Date</th>
+                <th>Sport</th>
+                <th>Event / Market / Pick</th>
+                <th class="right nowrap">Odds</th>
+                <th class="right nowrap">Stake</th>
+                <th class="nowrap">Result</th>
+                <th class="right nowrap">Profit</th>
+                <th class="nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const STORAGE_KEY = "bet_tracker_decimal_v1";
+
+  /** @type {{nextId:number, bets:Array<any>}} */
+  let state = { nextId: 1, bets: [] };
+
+  const $ = (id) => document.getElementById(id);
+
+  const els = {
+    date: $("date"),
+    sport: $("sport"),
+    event: $("event"),
+    market: $("market"),
+    pick: $("pick"),
+    odds: $("odds"),
+    stake: $("stake"),
+    result: $("result"),
+    notes: $("notes"),
+    addBtn: $("addBtn"),
+    clearBtn: $("clearBtn"),
+    exportBtn: $("exportBtn"),
+    importFile: $("importFile"),
+    wipeBtn: $("wipeBtn"),
+    tbody: $("tbody"),
+    filter: $("filter"),
+    search: $("search"),
+    sumBets: $("sumBets"),
+    sumWLP: $("sumWLP"),
+    sumStaked: $("sumStaked"),
+    sumProfit: $("sumProfit"),
+    sumROI: $("sumROI"),
+  };
+
+  function todayISO() {
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60 * 1000);
+    return local.toISOString().slice(0, 10);
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        state = {
+          nextId: Number(parsed.nextId) || 1,
+          bets: Array.isArray(parsed.bets) ? parsed.bets : [],
+        };
+      }
+    } catch (e) {
+      console.warn("Failed to load:", e);
+    }
+  }
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function calcProfit(bet) {
+    const odds = Number(bet.odds);
+    const stake = Number(bet.stake);
+    const r = (bet.result || "pending").toLowerCase();
+    if (!Number.isFinite(odds) || !Number.isFinite(stake)) return 0;
+    if (r === "win") return round2((odds - 1) * stake);
+    if (r === "loss") return round2(-stake);
+    return 0;
+  }
+
+  function isSettled(bet) {
+    const r = (bet.result || "").toLowerCase();
+    return r === "win" || r === "loss" || r === "push";
+  }
+
+  function round2(x) {
+    return Math.round((x + Number.EPSILON) * 100) / 100;
+  }
+
+  function resetForm() {
+    els.date.value = todayISO();
+    els.sport.value = "";
+    els.event.value = "";
+    els.market.value = "";
+    els.pick.value = "";
+    els.odds.value = "";
+    els.stake.value = "";
+    els.result.value = "pending";
+    els.notes.value = "";
+  }
+
+  function validateForm() {
+    const odds = Number(els.odds.value);
+    const stake = Number(els.stake.value);
+    if (!els.event.value.trim()) throw new Error("Event is required.");
+    if (!els.pick.value.trim()) throw new Error("Pick is required.");
+    if (!Number.isFinite(odds) || odds <= 1.0) throw new Error("Decimal odds must be > 1.00 (e.g., 1.91).");
+    if (!Number.isFinite(stake) || stake <= 0) throw new Error("Stake must be > 0.");
+  }
+
+  function addBet() {
+    validateForm();
+    const bet = {
+      id: state.nextId++,
+      date: els.date.value || todayISO(),
+      sport: els.sport.value.trim(),
+      event: els.event.value.trim(),
+      market: els.market.value.trim(),
+      pick: els.pick.value.trim(),
+      odds: Number(els.odds.value),
+      stake: Number(els.stake.value),
+      result: els.result.value,
+      notes: els.notes.value.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    state.bets.unshift(bet);
+    save();
+    render();
+    resetForm();
+  }
+
+  function setResult(id, result) {
+    const b = state.bets.find(x => x.id === id);
+    if (!b) return;
+    b.result = result;
+    save();
+    render();
+  }
+
+  function delBet(id) {
+    state.bets = state.bets.filter(x => x.id !== id);
+    save();
+    render();
+  }
+
+  function exportJSON() {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "bet-tracker-export.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importJSON(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        if (!parsed || typeof parsed !== "object") throw new Error("Invalid JSON.");
+        const bets = Array.isArray(parsed.bets) ? parsed.bets : [];
+        const nextId = Number(parsed.nextId) || 1;
+
+        // minimal normalization
+        state = {
+          nextId,
+          bets: bets.map((b) => ({
+            id: Number(b.id),
+            date: String(b.date || todayISO()).slice(0,10),
+            sport: String(b.sport || ""),
+            event: String(b.event || ""),
+            market: String(b.market || ""),
+            pick: String(b.pick || ""),
+            odds: Number(b.odds),
+            stake: Number(b.stake),
+            result: String(b.result || "pending").toLowerCase(),
+            notes: String(b.notes || ""),
+            createdAt: String(b.createdAt || new Date().toISOString()),
+          })).filter(b => Number.isFinite(b.id) && b.id > 0),
+        };
+
+        // fix nextId if needed
+        const maxId = state.bets.reduce((m,b) => Math.max(m, b.id), 0);
+        if (!Number.isFinite(state.nextId) || state.nextId <= maxId) state.nextId = maxId + 1;
+
+        save();
+        render();
+      } catch (e) {
+        alert("Import failed: " + e.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function wipeAll() {
+    if (!confirm("Wipe all bets? This cannot be undone.")) return;
+    state = { nextId: 1, bets: [] };
+    save();
+    render();
+  }
+
+  function pillClass(result) {
+    const r = (result || "pending").toLowerCase();
+    if (r === "win") return "pill win";
+    if (r === "loss") return "pill loss";
+    if (r === "push") return "pill push";
+    return "pill pending";
+  }
+
+  function renderSummary(bets) {
+    const settled = bets.filter(isSettled);
+    const total = bets.length;
+
+    let wins = 0, losses = 0, pushes = 0;
+    for (const b of settled) {
+      if (b.result === "win") wins++;
+      else if (b.result === "loss") losses++;
+      else if (b.result === "push") pushes++;
+    }
+
+    const staked = settled.reduce((s,b) => s + Number(b.stake || 0), 0);
+    const profit = settled.reduce((p,b) => p + calcProfit(b), 0);
+    const roi = staked > 0 ? (profit / staked) * 100 : 0;
+
+    els.sumBets.textContent = String(total);
+    els.sumWLP.textContent = `${wins}-${losses}-${pushes}`;
+    els.sumStaked.textContent = round2(staked).toFixed(2);
+    els.sumProfit.textContent = round2(profit).toFixed(2);
+    els.sumROI.textContent = `${round2(roi).toFixed(2)}%`;
+  }
+
+  function getFiltered() {
+    const filter = els.filter.value;
+    const q = els.search.value.trim().toLowerCase();
+
+    let bets = state.bets.slice();
+
+    if (filter === "settled") bets = bets.filter(isSettled);
+    if (filter === "pending") bets = bets.filter(b => !isSettled(b));
+
+    if (q) {
+      bets = bets.filter(b => {
+        const hay = `${b.date} ${b.sport} ${b.event} ${b.market} ${b.pick} ${b.notes}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    return bets;
+  }
+
+  function render() {
+    const bets = getFiltered();
+    els.tbody.innerHTML = "";
+
+    for (const b of bets) {
+      const tr = document.createElement("tr");
+
+      const profit = calcProfit(b);
+      const info = document.createElement("div");
+      info.innerHTML = `
+        <div><strong>${escapeHTML(b.event || "")}</strong></div>
+        <div class="muted small">${escapeHTML(b.market || "")} — ${escapeHTML(b.pick || "")}</div>
+        ${b.notes ? `<div class="muted small">${escapeHTML(b.notes)}</div>` : ""}
+      `;
+
+      tr.innerHTML = `
+        <td class="mono nowrap">${b.id}</td>
+        <td class="nowrap">${escapeHTML((b.date || "").slice(0,10))}</td>
+        <td>${escapeHTML(b.sport || "")}</td>
+        <td></td>
+        <td class="right mono nowrap">${Number(b.odds).toFixed(2)}</td>
+        <td class="right mono nowrap">${Number(b.stake).toFixed(2)}</td>
+        <td><span class="${pillClass(b.result)}">${escapeHTML(b.result || "pending")}</span></td>
+        <td class="right mono nowrap">${profit.toFixed(2)}</td>
+        <td class="nowrap"></td>
+      `;
+
+      tr.children[3].appendChild(info);
+
+      const actionsTd = tr.children[8];
+      const actionWrap = document.createElement("div");
+      actionWrap.className = "row";
+      actionWrap.style.gap = "6px";
+
+      const resSel = document.createElement("select");
+      resSel.innerHTML = `
+        <option value="pending">pending</option>
+        <option value="win">win</option>
+        <option value="loss">loss</option>
+        <option value="push">push</option>
+      `;
+      resSel.value = (b.result || "pending").toLowerCase();
+      resSel.onchange = () => setResult(b.id, resSel.value);
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn danger";
+      delBtn.textContent = "Delete";
+      delBtn.style.width = "auto";
+      delBtn.onclick = () => delBet(b.id);
+
+      actionWrap.appendChild(resSel);
+      actionWrap.appendChild(delBtn);
+      actionsTd.appendChild(actionWrap);
+
+      els.tbody.appendChild(tr);
+    }
+
+    // summary should be based on full state (not filtered), or filtered? choose full state for totals:
+    renderSummary(state.bets);
+  }
+
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+
+  // wire up
+  els.addBtn.addEventListener("click", (e) => { e.preventDefault(); try { addBet(); } catch (err) { alert(err.message); } });
+  els.clearBtn.addEventListener("click", (e) => { e.preventDefault(); resetForm(); });
+  els.exportBtn.addEventListener("click", (e) => { e.preventDefault(); exportJSON(); });
+  els.importFile.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) importJSON(file);
+    e.target.value = "";
+  });
+  els.wipeBtn.addEventListener("click", (e) => { e.preventDefault(); wipeAll(); });
+  els.filter.addEventListener("change", render);
+  els.search.addEventListener("input", render);
+
+  // init
+  load();
+  els.date.value = todayISO();
+  render();
+})();
+</script>
+</body>
+</html>
