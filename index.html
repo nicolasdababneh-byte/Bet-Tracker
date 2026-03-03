@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bet Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial; background:#f4f4f4; padding:20px; }
+    h1 { text-align:center; }
+    .container { max-width:900px; margin:auto; background:white; padding:20px; border-radius:8px; }
+    input, select, button { padding:8px; margin:5px 0; width:100%; }
+    table { width:100%; margin-top:20px; border-collapse: collapse; }
+    th, td { padding:10px; border-bottom:1px solid #ddd; text-align:center; }
+    th { background:#222; color:white; }
+    .win { color:green; font-weight:bold; }
+    .loss { color:red; font-weight:bold; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Bet Tracker (Decimal Odds)</h1>
+
+  <input type="date" id="date">
+  <input type="text" id="event" placeholder="Event">
+  <input type="number" id="odds" placeholder="Decimal Odds (e.g. 1.91)" step="0.01">
+  <input type="number" id="stake" placeholder="Stake" step="0.01">
+
+  <select id="result">
+    <option value="pending">Pending</option>
+    <option value="win">Win</option>
+    <option value="loss">Loss</option>
+    <option value="push">Push</option>
+  </select>
+
+  <button onclick="addBet()">Add Bet</button>
+
+  <h3>Summary</h3>
+  <p>Total Staked: $<span id="totalStaked">0</span></p>
+  <p>Total Profit: $<span id="totalProfit">0</span></p>
+  <p>ROI: <span id="roi">0</span>%</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Event</th>
+        <th>Odds</th>
+        <th>Stake</th>
+        <th>Result</th>
+        <th>Profit</th>
+      </tr>
+    </thead>
+    <tbody id="betTable"></tbody>
+  </table>
+</div>
+
+<script>
+let bets = JSON.parse(localStorage.getItem("bets")) || [];
+
+function save() {
+  localStorage.setItem("bets", JSON.stringify(bets));
+}
+
+function calculateProfit(odds, stake, result) {
+  if (result === "win") return (odds - 1) * stake;
+  if (result === "loss") return -stake;
+  return 0;
+}
+
+function updateSummary() {
+  let totalStaked = 0;
+  let totalProfit = 0;
+
+  bets.forEach(b => {
+    if (b.result !== "pending") {
+      totalStaked += b.stake;
+      totalProfit += calculateProfit(b.odds, b.stake, b.result);
+    }
+  });
+
+  document.getElementById("totalStaked").innerText = totalStaked.toFixed(2);
+  document.getElementById("totalProfit").innerText = totalProfit.toFixed(2);
+
+  let roi = totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0;
+  document.getElementById("roi").innerText = roi.toFixed(2);
+}
+
+function render() {
+  let table = document.getElementById("betTable");
+  table.innerHTML = "";
+
+  bets.forEach(b => {
+    let profit = calculateProfit(b.odds, b.stake, b.result);
+
+    table.innerHTML += `
+      <tr>
+        <td>${b.date}</td>
+        <td>${b.event}</td>
+        <td>${b.odds}</td>
+        <td>$${b.stake}</td>
+        <td>${b.result}</td>
+        <td class="${b.result === 'win' ? 'win' : b.result === 'loss' ? 'loss' : ''}">
+          $${profit.toFixed(2)}
+        </td>
+      </tr>
+    `;
+  });
+
+  updateSummary();
+}
+
+function addBet() {
+  let bet = {
+    date: document.getElementById("date").value,
+    event: document.getElementById("event").value,
+    odds: parseFloat(document.getElementById("odds").value),
+    stake: parseFloat(document.getElementById("stake").value),
+    result: document.getElementById("result").value
+  };
+
+  if (!bet.date || !bet.event || !bet.odds || !bet.stake) {
+    alert("Fill all fields");
+    return;
+  }
+
+  bets.push(bet);
+  save();
+  render();
+}
+
+render();
+</script>
+
+</body>
+</html>
